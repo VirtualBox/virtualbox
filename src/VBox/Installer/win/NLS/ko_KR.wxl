@@ -1,0 +1,639 @@
+<!--
+    Language Definition Include for VirtualBox WiX script.
+-->
+<!--
+    Copyright (C) 2011-2026 Oracle and/or its affiliates.
+
+    This file is part of VirtualBox base platform packages, as
+    available from https://www.virtualbox.org.
+
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation, in version 3 of the
+    License.
+
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, see <https://www.gnu.org/licenses>.
+
+    SPDX-License-Identifier: GPL-3.0-only
+-->
+
+<WixLocalization xmlns="http://wixtoolset.org/schemas/v4/wxl" Culture="ko_KR" Codepage="949">
+    <String Id="LANG" Value="1042" />
+    <String Id="CODEPAGE" Value="949" />
+    <String Id="LangName" Value="한국어" />
+
+    <String Id="ButtonText_No" Value="아니요(&amp;N)" />
+    <String Id="ButtonText_Yes" Value="예(&amp;Y)" />
+    <String Id="ButtonText_Cancel" Value="취소(&amp;C)" />
+    <String Id="ButtonText_Next" Value="다음(&amp;N)" />
+    <String Id="ButtonText_Back" Value="이전(&amp;P)" />
+    <String Id="ButtonText_Browse" Value="변경(&amp;C)" />
+    <String Id="ButtonText_OK" Value="확인(&amp;K)" />
+    <String Id="ButtonText_Check" Value="검사(&amp;C)" />
+    <String Id="ButtonText_Install" Value="설치(&amp;I)" />
+    <String Id="ButtonText_Remove" Value="제거(&amp;R)" />
+    <String Id="ButtonText_Finish" Value="마침(&amp;F)" />
+    <String Id="ButtonText_Repair" Value="복구(&amp;R)" />
+    <String Id="ButtonText_Return" Value="돌아가기(&amp;R)" />
+    <String Id="ButtonText_Retry" Value="재시도(&amp;T)" />
+    <String Id="ButtonText_Ignore" Value="무시(&amp;G)" />
+    <String Id="ButtonText_Exit" Value="종료(&amp;X)" />
+
+    <String Id="InstallModeCustom" Value="사용자 지정" />
+    <String Id="Setup" Value="설치" />
+
+    <!---->
+
+    <String Id="StartMenu_License" Value="라이선스" />
+    <String Id="StartMenu_UserManual" Value="사용자 설명서" />
+
+    <!---->
+
+    <String Id="VB_App" Value="[ProductName] 응용 프로그램입니다." />
+    <String Id="VB_USBDriver" Value="[ProductName] USB 장치 지원을 위한 USB 장치 드라이버입니다." />
+    <String Id="VB_Network" Value="[ProductName] 네트워킹 지원을 위한 네트워크 장치 드라이버입니다." />
+    <String Id="VB_NetLwfDriver" Value="[ProductName] NDIS6 브리지 네트워킹용 드라이버입니다." />
+    <String Id="VB_NetAdp6Driver" Value="[ProductName] NDIS6 호스트 전용 네트워킹용 가상 네트워크 어댑터 드라이버입니다." />
+    <String Id="VB_Python" Value="VirtualBox용 Python 지원입니다." />
+
+    <!---->
+
+    <String Id="UsedByOtherApp" Value="현재 설치된 VirtualBox 버전을 사용 중인 응용 프로그램이 감지되었습니다. 설치를 계속하기 전에 이 응용 프로그램을 제거해야 합니다. 자세한 내용은 VirtualBox 설치 디렉터리의 dependence.dep 파일을 참조하세요." />
+    <String Id="NeedAdmin" Value="[ProductName]을(를) 설치 해제할 수 있는 관리자 권한이 있어야 합니다! 이 설치 프로그램은 지금 종료됩니다." />
+    <String Id="NeedMSCRT" Value="[ProductName]을(를) 먼저 설치하려면 Microsoft Visual C++ 2019 재배포 가능 패키지가 필요합니다. [ProductName]을 설치하고 다시 시작해 주세요." />
+    <String Id="WrongOS" Value="[ProductName]은(는) Windows 10 이상에서만 실행됩니다." />
+    <String Id="Only64Bit" Value="[ProductName]은(는) 64비트 Windows 시스템에서만 실행됩니다." />
+    <String Id="WrongPlatformArch" Value="이 [ProductName] 버전은 다른 플랫폼 아키텍처를 위해 개발되었으므로 설치할 수 없습니다. 일치하는 [ProductName] 버전을 설치해 주세요!" />
+    <String Id="NewerVersionDetected" Value="VirtualBox의 새 버전이 이미 설치되어 있습니다. VirtualBox의 이전 버전을 설치하기 전에 먼저 제거해 주세요." />
+    <String Id="InvalidTargetDir" Value="잘못된 설치 디렉터리가 지정되었습니다! 다른 설치 디렉터리를 사용하여 [ProductName]을 설치하세요. 자세한 내용은 [ProductName] 설명서를 참조하세요." />
+
+    <!---->
+
+    <String Id="CancelDlg_Question" Value="[ProductName] 설치를 취소하시겠습니까?" />
+
+    <!---->
+
+    <String Id="WelcomeDlg_Header" Value="[ProductName] 설치 프로그램에 오신 것을 환영합니다" />
+    <String Id="WelcomeDlg_Body" Value="설치 프로그램이 컴퓨터에 [ProductName]을(를) 설치합니다. 계속하려면 다음을 클릭하고 설치 프로그램을 종료하려면 취소를 클릭하세요." />
+
+    <!---->
+
+    <String Id="LicenseAgreementDlg_Header" Value="최종 사용자 라이선스 계약" />
+    <String Id="LicenseAgreementDlg_Body" Value="다음 라이선스 계약서를 주의 깊게 읽어보세요." />
+    <String Id="LicenseAgreementDlg_Accept" Value="라이선스 계약 조건을 수락합니다(&amp;A)" />
+    <String Id="LicenseAgreementDlg_Decline" Value="라이선스 계약 조건을 수락하지 않습니다(&amp;D)" />
+
+    <!---->
+
+    <String Id="InvalidTargetDirDlg_Header" Value="잘못된 설치 디렉터리" />
+    <String Id="InvalidTargetDirDlg_Desc1" Value="선택한 설치 디렉터리가 보안 요구 사항을 충족하지 않으므로 유효하지 않습니다. 자세한 내용은 [ProductName] 매뉴얼을 참조하세요." />
+    <String Id="InvalidTargetDirDlg_Desc2" Value="[ProductName]을(를) 설치할 다른 디렉터리를 선택해 주세요.." />
+
+    <!---->
+
+    <String Id="CheckSerialDlg_Header" Value="일련 번호" />
+    <String Id="CheckSerialDlg_Body" Value="아래 필드에 일련 번호를 입력해 주세요. VirtualBox CD 케이스 내부의 스티커에서 찾을 수 있습니다." />
+    <String Id="CheckSerialDlg_Footer" Value="일련 번호 입력이 완료되면 아래의 &quot;확인&quot; 버튼을 누르세요." />
+
+    <!---->
+
+    <String Id="WrongSerialDlg_Header" Value="입력된 일련 번호가 잘못되었습니다!" />
+    <String Id="WrongSerialDlg_Desc1" Value="다시 돌아가서 일련 번호를 입력해 주세요." />
+    <String Id="WrongSerialDlg_Desc2" Value="일련 번호는 스티커에 인쇄된 것처럼 정확히 입역해야 한다는 점을 명심하세요." />
+
+    <!---->
+
+    <String Id="WarnSaveStatesDlg_Header" Value="경고:" />
+    <String Id="WarnSaveStatesDlg_Header2" Value="호환되지 않는 저장 상태!" />
+    <String Id="WarnSaveStatesDlg_Desc" Value="[ProductName]을(를) 업그레이드할 때 이미 사용 중인 컴퓨터에서 저장된 모든 상태가 더 이상 작동하지 않습니다! 설치 후에는 수동으로 폐기해야 합니다." />
+    <String Id="WarnSaveStatesDlg_Proceed" Value="지금 설치를 진행하시겠습니까?" />
+
+    <!---->
+
+    <String Id="WarnTAPDevicesDlg_Header" Value="호스트 인터페이스" />
+    <String Id="WarnTAPDevicesDlg_Desc" Value="이전 버전에서 일부 호스트 인터페이스를 컴퓨터에 사용했다면, 이 설치 후에 수동으로 다시 만들어야 합니다." />
+
+    <!---->
+
+    <String Id="NetCfgLocked" Value="설치를 계속하기 전에 다음 응용 프로그램을 닫아야 합니다: &quot;[2]&quot;" />
+
+    <!---->
+
+    <String Id="CustomizeDlg_Location" Value="설치 위치:" />
+    <String Id="CustomizeDlg_DiskUsage" Value="디스크 공간 확인" />
+    <String Id="CustomizeDlg_SelFeatures" Value="설치할 기능 선택" />
+    <String Id="CustomizeDlg_IconTree" Value="아래 트리의 아이콘을 클릭하여 기능 설치 방식을 변경하세요." />
+    <String Id="CustomizeDlg_CustomSetup" Value="사용자 지정 설정" />
+    <String Id="CustomizeDlg_SelItemDesc" Value="CustomizeDlgItemDescription-CustomizeDlgItemDescription" />
+    <String Id="CustomizeDlg_SelItemSize" Value="CustomizeDlgItemSize-CustomizeDlgItemSize" />
+    <String Id="CustomizeDlg_SelItemPath" Value="CustomizeDlgLocation-CustomizeDlgLocation" />
+
+    <!---->
+
+    <String Id="Customize2Dlg_Header" Value="사용자 지정" />
+    <String Id="Customize2Dlg_Desc" Value="시작 옵션을 하나 이상 선택" />
+    <String Id="Customize2Dlg_CreateStartMenuEntries" Value="시작 메뉴에 추가" />
+    <String Id="Customize2Dlg_CreateDesktopShortcut" Value="바탕 화면 바로 가기 만들기" />
+    <String Id="Customize2Dlg_RegisterFileExtensions" Value=".ova 또는 .ovf 파일을 열 때 기본값으로 시작" />
+
+    <!---->
+
+    <String Id="SelectionNetworkTypeDlg_CommonDescription" Value="사용할 네트워크 드라이버 유형을 선택합니다:" />
+    <String Id="SelectionNetworkTypeDlg_DescriptionNDIS6" Value="NDIS6 네트워크 드라이버입니다.&#xA;이는 최신 버전의 Windows (Vista 및 최신 버전)에서는 기본값입니다." />
+    <String Id="SelectionNetworkTypeDlg_RadioButtonNDIS6" Value="NDIS6 네트워크 드라이버를 사용합니다." />
+
+    <!---->
+
+    <String Id="WarnDisconNetIfacesDlg_Title" Value="경고:" />
+    <String Id="WarnDisconNetIfacesDlg_Title2" Value="네트워크 연결 끊김" />
+    <String Id="WarnDisconNetIfacesDlg_Desc" Value="[ProductName] 네트워킹을 설치하는 동안 네트워크 연결이 끊어집니다. 계속하기 전에 네트워크 연결이 필요한 작업이 완료되었는지 확인하세요." />
+
+    <!---->
+
+    <String Id="WarnPythonDlg_Title" Value="누락된 종속성" />
+    <String Id="WarnPythonDlg_Title2" Value="Python 코어 및 win32api" />
+    <String Id="WarnPythonDlg_Desc" Value="[ProductName] Python 바인딩을 설치하려면 Python 코어 패키지와 win32api 바인딩을 설치해야 합니다." />
+    <String Id="WarnPythonDlg_Desc2" Value="나중에 설치하고 구성할 수 있습니다. 자세한 내용은 [ProductName] SDK 프로그래밍 안내서를 참조하세요. 또는 Oracle VirtualBox 설치를 계속하기 전에 설치하세요." />
+
+    <!---->
+
+    <String Id="DiskCostDlg_SpaceRequired" Value="선택한 기능을 설치하는 데 필요한 디스크 공간입니다." />
+    <String Id="DiskCostDlg_NotEnoughSpace" Value="강조 표시된 볼륨 (있는 경우)에는 현재 선택된 기능에 사용할 수 있는 디스크 공간이 충분하지 않습니다. 강조 표시된 볼륨에서 일부 파일을 제거하거나 로컬 드라이브에 더 적은 기능을 설치하도록 선택하거나 다른 대상 드라이브를 선택할 수 있습니다." />
+    <String Id="DiskCostDlg_SpaceRequirements" Value="디스크 공간 요구 사항" />
+    <String Id="DiskCostDlg_VolumeList" Value="{120}{70}{70}{70}{70}" />
+
+    <!---->
+
+    <String Id="BrowseDlg_BrowseDestFolder" Value="대상 폴더 찾아보기" />
+    <String Id="BrowseDlg_ChangeCurFolder" Value="현재 대상 폴더 변경" />
+    <String Id="BrowseDlg_UpOneLevelTooltip" Value="한 단계 위로" />
+    <String Id="BrowseDlg_CreateNewFolderTooltip" Value="새 폴더 만들기" />
+    <String Id="BrowseDlg_LookIn" Value="찾아보기(&amp;L):" />
+    <String Id="BrowseDlg_FolderName" Value="폴더 이름(&amp;F):" />
+
+    <!---->
+
+    <String Id="VerifyReadyDlg_ReadyToBegin" Value="설치 유형을 설치할 준비 완료 &quot;[InstallMode]&quot;." />
+    <String Id="VerifyReadyDlg_ReadyToInstall" Value="설치 준비 완료" />
+
+    <!---->
+
+    <String Id="ExitDlg_ClickFinish" Value="VirtualBox 확장팩도 필요할 수 있습니다. 자세한 내용은 VirtualBox 사용자 안내서를 참조하세요." />
+    <String Id="ExitDlg_InstComplete" Value="[ProductName]이(가) 설치되었습니다." />
+    <String Id="ExitDlg_StartVBox" Value="[ProductName]을(를) 시작하시겠습니까?" />
+
+    <!---->
+
+    <String Id="FatalErrorDlg_Title" Value="[ProductName] 설치 프로그램이 조기 종료되었습니다" />
+    <String Id="FatalErrorDlg_Description1" Value="재부팅 후 (제거) 설치를 다시 실행하여 시도해 주세요." />
+    <String Id="FatalErrorDlg_Description2" Value="또는 [ProductName]의 포럼 또는 문서를 참조하세요." />
+    <String Id="FatalErrorDlg_DescLogOpen" Value="로그 파일 열기" />
+    <String Id="FatalErrorDlg_DescLogPath" Value="로그 파일이 작성되었습니다:" />
+
+    <!---->
+
+    <String Id="FilesInUse_Text" Value="다음 응용 프로그램은 이 설정에서 업데이트해야 하는 파일을 사용하고 있습니다. 이러한 응용 프로그램을 닫은 다음 다시 시도를 클릭하여 설치를 계속하거나 종료를 클릭하여 종료합니다(&amp;R)." />
+    <String Id="FilesInUse_Description" Value="업데이트가 필요한 일부 파일이 현재 사용 중입니다." />
+    <String Id="FilesInUse_Title" Value="사용 중인 파일" />
+
+    <!---->
+
+    <String Id="UserExitDlg_Header" Value="[ProductName] 설치 프로그램이 중단되었습니다" />
+    <String Id="UserExitDlg_Desc" Value="[ProductName] 설치가 중단되었습니다. 시스템이 수정되지 않았습니다. 나중에 이 프로그램을 설치하려면 설치를 다시 실행하세요." />
+    <String Id="UserExitDlg_Footer" Value="완료 버튼을 클릭하여 설치 프로그램을 종료합니다." />
+
+    <!---->
+
+    <String Id="ProgressDlg_PleaseWait" Value="설치 과정은 몇 분 정도 걸릴 것입니다" />
+
+    <!---->
+
+    <String Id="ResumeDlg_Header" Value="[ProductName] 설치  프로그램 재개" />
+    <String Id="ResumeDlg_Desc" Value="설치 프로그램이 컴퓨터에 [ProductName] 설치를 완료합니다. 계속하려면 설치를 클릭하고, 설치 프로그램을 종료하려면 취소를 클릭하세요." />
+
+    <!---->
+
+    <String Id="MaintenanceTypeDlg_Header" Value="설치 수정, 복구 또는 제거" />
+    <String Id="MaintenanceTypeDlg_SelOption" Value="수행하려는 작업을 선택하세요." />
+    <String Id="MaintenanceTypeDlg_Repair" Value="복구(&amp;P)" />
+    <String Id="MaintenanceTypeDlg_RepairText" Value="최신 설치 상태에서 오류를 복구합니다 - 누락되거나 손상된 파일, 바로 가기 및 레지스트리 항목을 수정합니다." />
+    <String Id="MaintenanceTypeDlg_RepairTooltip" Value="복구 설치" />
+    <String Id="MaintenanceTypeDlg_RepairProgress1" Value="복구 중" />
+    <String Id="MaintenanceTypeDlg_RepairProgress2" Value="복구" />
+    <String Id="MaintenanceTypeDlg_Remove" Value="제거(&amp;R)" />
+    <String Id="MaintenanceTypeDlg_RemoveText" Value="컴퓨터에서 [ProductName]을 제거합니다." />
+    <String Id="MaintenanceTypeDlg_RemoveTooltip" Value="설치 제거" />
+    <String Id="MaintenanceTypeDlg_RemoveProgress1" Value="제거 중" />
+    <String Id="MaintenanceTypeDlg_RemoveProgress2" Value="제거" />
+
+    <!---->
+
+    <String Id="MaintenanceWelcomeDlg_Header" Value="[ProductName] 설치 프로그램에 오신 것을 환영합니다" />
+    <String Id="MaintenanceWelcomeDlg_Desc" Value="설치 프로그램을 사용하면 현재 설치를 복구하거나 컴퓨터에서 [ProductName]을(를) 제거할 수 있습니다. 계속하려면 다음을 클릭하고 설치 프로그램을 종료하려면 취소를 클릭하세요." />
+
+    <!---->
+
+    <String Id="OutOfDiskDlg_InstallationExceeds" Value="설치에 필요한 디스크 공간이 사용 가능한 디스크 공간을 초과합니다." />
+    <String Id="OutOfDiskDlg_NotEnoughDiskSpace" Value="강조 표시된 볼륨에는 현재 선택된 기능에 사용할 수 있는 디스크 공간이 충분하지 않습니다. 강조 표시된 볼륨에서 일부 파일을 제거하거나 로컬 드라이브에 더 적은 기능을 설치하도록 선택하거나 다른 대상 드라이브를 선택할 수 있습니다." />
+    <String Id="OutOfDiskDlg_OutOfDiskSpace" Value="디스크 공간 부족" />
+
+    <!---->
+
+    <String Id="OutOfRbDiskDlg_InstallationExceeds" Value="설치에 필요한 디스크 공간이 사용 가능한 디스크 공간을 초과합니다." />
+    <String Id="OutOfRbDiskDlg_NotEnoughDiskSpace" Value="강조 표시된 볼륨에는 현재 선택된 기능에 사용할 수 있는 디스크 공간이 충분하지 않습니다. 강조 표시된 볼륨에서 일부 파일을 제거하거나 로컬 드라이브에 더 적은 기능을 설치하도록 선택하거나 다른 대상 드라이브를 선택할 수 있습니다." />
+    <String Id="OutOfRbDiskDlg_OutOfDiskSpace" Value="디스크 공간 부족" />
+    <String Id="OutOfRbDiskDlg_Desc" Value="또는 설치 프로그램의 롤백 기능을 비활성화하도록 선택할 수도 있습니다. 이렇게 하면 설치가 중단된 경우 설치 프로그램이 컴퓨터의 원래 상태를 복원할 수 있습니다. 롤백을 비활성화할 위험을 감수하려면 예를 클릭하세요." />
+
+    <!---->
+
+    <String Id="VerifyRemoveDlg_Header" Value="[ProductName] 제거" />
+    <String Id="VerifyRemoveDlg_Desc" Value="컴퓨터에서 프로그램을 제거하기로 선택했습니다." />
+    <String Id="VerifyRemoveDlg_ClickRemove" Value="제거를 클릭하여 컴퓨터에서 [ProductName]을 제거합니다. 설치 설정을 검토하거나 변경하려면 뒤로를 클릭합니다. 마법사를 종료하려면 취소를 클릭합니다." />
+
+    <!---->
+
+    <String Id="VerifyRepairDlg_Header" Value="[ProductName] 복구" />
+    <String Id="VerifyRepairDlg_ReadyToBegin" Value="설치 프로그램이 [ProductName]의 복구를 시작할 준비가 되었습니다." />
+    <String Id="VerifyRepairDlg_ClickRepair" Value="[ProductName]의 설치를 복구하려면 복구를 클릭합니다. 설치 설정을 검토하거나 변경하려면 뒤로를 클릭합니다. 마법사를 종료하려면 취소를 클릭합니다." />
+
+    <!---->
+
+    <String Id="WaitForCostingDlg_PleaseWait" Value="설치 프로그램이 디스크 공간 요구 사항을 결정하는 동안 잠시 기다려 주세요." />
+
+    <!---->
+
+    <String Id="MsiRMFilesInUse_Text" Value="다음 응용 프로그램은 이 설정에서 업데이트해야 하는 파일을 사용하고 있습니다. 설치 관리자가 파일을 닫고 나중에 다시 시작하거나 컴퓨터를 재부팅하도록 할 수 있습니다." />
+    <String Id="MsiRMFilesInUse_Description" Value="업데이트가 필요한 일부 파일이 현재 사용 중입니다." />
+    <String Id="MsiRMFilesInUse_Title" Value="사용 중인 파일" />
+    <String Id="MsiRMFilesInUse_UseRM" Value="응용 프로그램을 닫고 다시 시작해 보세요(&amp;C)." />
+    <String Id="MsiRMFilesInUse_DontUseRM" Value="응용 프로그램을 닫지 않습니다. 재부팅이 필요합니다(&amp;D)." />
+
+    <!-- 다음 문자열은 WiX 및 MSI에서 내부적으로 사용됩니다 -->
+    <String Id="Error0" Value="{{치명적인 오류: }}" />
+    <String Id="Error1" Value="{{오류 [1]. }}" />
+    <String Id="Error2" Value="경고 [1]." />
+    <String Id="Error3" Value="오류 [1]." />
+    <String Id="Error4" Value="정보 [1]." />
+    <String Id="Error5" Value="설치 프로그램에서 이 패키지를 설치하는 동안 예기치 않은 오류가 발생했습니다. 이는 이 패키지에 문제가 있음을 나타낼 수 있습니다. 오류 코드는 [1]입니다. {인수는 [2], [3], [4]}입니다" />
+    <String Id="Error6" Value="" />
+    <String Id="Error7" Value="{{디스크 공간 부족: }}" />
+    <String Id="Error8" Value="작업 [Time]: [1]. [2]" />
+    <String Id="Error9" Value="[ProductName]" />
+    <String Id="Error10" Value="{[2]}{, [3]}{, [4]}" />
+    <String Id="Error11" Value="메시지 유형: [1], 인수: [2]" />
+    <String Id="Error12" Value="=== 로깅이 시작되었습니다: [Date]  [Time] ===" />
+    <String Id="Error13" Value="=== 로깅이 중지되었습니다:: [Date]  [Time] ===" />
+    <String Id="Error14" Value="작업 시작 [Time]: [1]." />
+    <String Id="Error15" Value="작업 종료 [Time]: [1]. 반환 값 [2]." />
+    <String Id="Error16" Value="남은 시간: {[1]분}{[2]초}" />
+    <String Id="Error17" Value="메모리가 부족합니다. 다시 시도하기 전에 다른 응용 프로그램을 종료합니다." />
+    <String Id="Error18" Value="설치 프로그램이 더 이상 응답하지 않습니다." />
+    <String Id="Error19" Value="설치 프로그램이 조기에 중지되었습니다." />
+    <String Id="Error20" Value="Windows가 [ProductName]을 구성하는 동안 잠시 기다려 주세요" />
+    <String Id="Error21" Value="필요한 정보 수집 중..." />
+    <String Id="Error22" Value="이 응용 프로그램의 이전 버전을 제거 중..." />
+    <String Id="Error23" Value="이 응용 프로그램의 이전 버전 제거 준비 중..." />
+    <String Id="Error32" Value="{[ProductName] 설치가 성공적으로 완료되었습니다." />
+    <String Id="Error33" Value="{[ProductName] 설치에 실패했습니다." />
+    <String Id="Error1101" Value="파일에서 오류 읽기: [2]. {{ System error [3].}} 파일이 존재하고 액세스할 수 있는지 확인합니다." />
+    <String Id="Error1301" Value="'[2]' 파일을 만들 수 없습니다. 이 이름을 가진 디렉터리가 이미 존재합니다. 설치를 취소하고 다른 위치로 설치해 보세요." />
+    <String Id="Error1302" Value="디스크를 삽입해 주세요: [2]" />
+    <String Id="Error1303" Value="설치 프로그램에 이 디렉터리에 액세스할 수 있는 권한이 부족합니다. [2] 설치를 계속할 수 없습니다. 관리자로 로그인하거나 시스템 관리자에게 문의하세요." />
+    <String Id="Error1304" Value="파일 쓰기 오류: [2]. 해당 디렉터리에 대한 접근 권한이 있는지 확인하세요." />
+    <String Id="Error1305" Value="파일 읽기 오류 [2]. {{ System error [3].}} 파일이 존재하고 접근 가능한지 확인하세요." />
+    <String Id="Error1306" Value="다른 응용 프로그램 파일 '[2]'에 대한 독점 액세스 권한을 가지고 있습니다. 다른 모든 응용 프로그램을 종료한 다음 다시 시도를 클릭하세요." />
+    <String Id="Error1307" Value="이 파일을 설치하기에는 디스크 공간이 부족합니다. [2] 디스크 공간을 확보하고 다시 시도를 클릭하거나 취소를 클릭하여 종료합니다." />
+    <String Id="Error1308" Value="원본 파일을 찾을 수 없습니다: [2]. 파일이 존재하고 해당 파일에 접근할 수 있는지 확인하세요." />
+    <String Id="Error1309" Value="파일 읽기 오류: [3]. {{ System error [2].}} 파일이 존재하고 접근 가능한지 확인하세요." />
+    <String Id="Error1310" Value="파일 쓰기 오류: [3]. {{ System error [2].}} 해당 디렉터리에 접근 권한이 있는지 확인하세요." />
+    <String Id="Error1311" Value="원본 파일을 찾을 수 없습니다{{(cabinet)}}: [2]. 파일이 존재하고 접근 권한이 있는지 확인하세요." />
+    <String Id="Error1312" Value="'[2]' 디렉터리를 만들 수 없습니다. 이 이름의 파일이 이미 존재합니다. 파일 이름을 변경하거나 삭제한 후 다시 시도하거나 취소를 클릭하여 종료하세요." />
+    <String Id="Error1313" Value="볼륨 [2]을 현재 사용할 수 없습니다. 다른 볼륨을 선택해 주세요." />
+    <String Id="Error1314" Value="지정된 경로 '[2]'를 사용할 수 없습니다." />
+    <String Id="Error1315" Value="지정된 폴더에 쓸 수 없습니다: [2]." />
+    <String Id="Error1316" Value="파일에서 읽으려고 시도하는 동안 네트워크 오류가 발생했습니다: [2]" />
+    <String Id="Error1317" Value="디렉터리를 생성하려고 시도하는 동안 오류가 발생했습니다: [2]" />
+    <String Id="Error1318" Value="디렉터리를 생성하려고 시도하는 동안 네트워크 오류가 발생했습니다: [2]" />
+    <String Id="Error1319" Value="원본 파일 캐비닛을 열려고 시도하는 동안 네트워크 오류가 발생했습니다: [2]" />
+    <String Id="Error1320" Value="지정된 경로가 너무 깁니다: [2]" />
+    <String Id="Error1321" Value="설치 프로그램은 이 파일을 수정할 수 있는 권한이 부족합니다: [2]." />
+    <String Id="Error1322" Value="폴더 경로 '[2]'의 일부가 유효하지 않습니다. 비어 있거나 시스템에서 허용하는 길이를 초과합니다." />
+    <String Id="Error1323" Value="폴더 경로 '[2]'에는 폴더 경로에 유효하지 않은 단어가 포함되어 있습니다." />
+    <String Id="Error1324" Value="폴더 경로 '[2]'에는 유효하지 않은 문자가 포함되어 있습니다." />
+    <String Id="Error1325" Value="'[2]'는 유효한 짧은 파일 이름이 아닙니다." />
+    <String Id="Error1326" Value="파일 보안 정보를 가져오는 중 오류 발생: [3] GetLastString: [2]" />
+    <String Id="Error1327" Value="잘못된 드라이브: [2]" />
+    <String Id="Error1328" Value="파일 [2]에 패치를 적용하는 중 오류가 발생했습니다. 해당 파일은 다른 방법으로 업데이트되었을 가능성이 높으며, 이 패치를 통해 더 이상 수정할 수 없습니다. 자세한 내용은 패치 공급업체에 문의하세요. {{시스템 오류: [3]}}" />
+    <String Id="Error1329" Value="캐비닛 파일[2]에 디지털 서명이 되어 있지 않아 필수 파일을 설치할 수 없습니다. 이는 캐비닛 파일이 손상되었음을 나타낼 수 있습니다." />
+    <String Id="Error1330" Value="캐비닛 파일[2]의 디지털 서명이 유효하지 않아 필수 파일을 설치할 수 없습니다. 이는 캐비닛 파일이 손상되었음을 나타낼 수 있습니다.{{  WinVerifyTrust에서 오류 [3]가 반환되었습니다.}}" />
+    <String Id="Error1331" Value="파일 [2]을 올바르게 복사하지 못했습니다. CRC 오류입니다." />
+    <String Id="Error1332" Value="파일 [2]을 올바르게 이동하지 못했습니다. CRC 오류입니다." />
+    <String Id="Error1333" Value="파일 [2]을 올바르게 패치하지 못했습니다. CRC 오류입니다." />
+    <String Id="Error1334" Value="캐비닛 파일 '[3]'에서 파일을 찾을 수 없으므로 '[2]' 파일을 설치할 수 없습니다. 이는 네트워크 오류, CD-ROM에서 읽은 오류 또는 이 패키지에 문제가 있음을 나타낼 수 있습니다." />
+    <String Id="Error1335" Value="이 설치에 필요한 캐비닛 파일 '[2]'이 손상되어 사용할 수 없습니다. 이는 네트워크 오류, CD-ROM에서 읽은 오류 또는 이 패키지에 문제가 있음을 나타낼 수 있습니다." />
+    <String Id="Error1336" Value="이 설치를 완료하는 데 필요한 임시 파일을 만드는 중 오류가 발생했습니다. {{폴더: [3]. 시스템 오류 코드: [2]}}" />
+    <String Id="Error1401" Value="키를 생성할 수 없습니다: [2]. {{ 시스템 오류 [3].}} 해당 키에 대한 액세스 권한이 충분한지 확인하거나 지원 담당자에게 문의하세요." />
+    <String Id="Error1402" Value="키를 열 수 없습니다: [2]. {{ 시스템 오류 [3].}} 해당 키에 대한 액세스 권한이 충분한지 확인하거나 지원 담당자에게 문의하세요." />
+    <String Id="Error1403" Value="키 [3]에서 값 [2]를 삭제할 수 없습니다. {{ 시스템 오류 [4].}} 해당 키에 대한 충분한 액세스 권한이 있는지 확인하거나 지원 담당자에게 문의하세요." />
+    <String Id="Error1404" Value="키 [2]를 삭제할 수 없습니다. {{ 시스템 오류 [3].}} 해당 키에 대한 충분한 액세스 권한이 있는지 확인하거나 지원 담당자에게 문의하세요." />
+    <String Id="Error1405" Value="키 [3]에서 값 [2]를 읽을 수 없습니다. {{ 시스템 오류 [4].}} 해당 키에 대한 충분한 액세스 권한이 있는지 확인하거나 지원 담당자에게 문의하세요." />
+    <String Id="Error1406" Value="키 [3]에 값 [2]를 쓸 수 없습니다. {{ 시스템 오류 [4].}} 해당 키에 대한 충분한 액세스 권한이 있는지 확인하거나 지원 담당자에게 문의하세요." /> />
+    <String Id="Error1407" Value="키 [2]에 대한 값 이름을 가져올 수 없습니다. {{ 시스템 오류 [3].}} 해당 키에 대한 충분한 액세스 권한이 있는지 확인하거나 지원 담당자에게 문의하세요." />
+    <String Id="Error1408" Value="키 [2]에 대한 하위 키 이름을 가져올 수 없습니다. {{ 시스템 오류 [3].}} 해당 키에 대한 충분한 액세스 권한이 있는지 확인하거나 지원 담당자에게 문의하세요." />
+    <String Id="Error1409" Value="키 [2]에 대한 보안 정보를 읽을 수 없습니다. {{ 시스템 오류 [3].}} 해당 키에 대한 충분한 액세스 권한이 있는지 확인하거나 지원 담당자에게 문의하세요." />
+    <String Id="Error1410" Value="사용 가능한 레지스트리 공간을 늘릴 수 없습니다. 이 응용 프로그램을 설치하려면 [2]KB의 여유 레지스트리 공간이 필요합니다." />
+    <String Id="Error1500" Value="다른 설치가 진행 중입니다. 이 설치를 계속하려면 먼저 해당 설치를 완료해야 합니다." />
+    <String Id="Error1501" Value="보안 데이터에 액세스하는 중 오류가 발생했습니다. Windows 설치 프로그램이 올바르게 구성되어 있는지 확인한 후 다시 설치해 주세요." />
+    <String Id="Error1502" Value="사용자 '[2]'는 이전에 '[3]' 제품에 대한 설치를 시작했습니다. 해당 사용자는 해당 제품을 사용하기 전에 해당 설치를 다시 실행해야 합니다. 이제 현재 설치가 계속됩니다." />
+    <String Id="Error1503" Value="사용자 '[2]'는 이전에 '[3]' 제품에 대한 설치를 시작했습니다. 해당 사용자는 해당 제품을 사용하기 전에 해당 설치를 다시 실행해야 합니다." />
+    <String Id="Error1601" Value="디스크 공간 부족 -- 볼륨: '[2]'; 필요한 공간: [3] KB; 사용 가능한 공간: [4] KB. 디스크 공간을 확보하고 다시 시도해 보세요." />
+    <String Id="Error1602" Value="정말 취소하시겠습니까?" />
+    <String Id="Error1603" Value="파일 [2][3]이 다음 프로세스에 의해 사용 중입니다: 이름: [4], ID: [5], 창 제목: '[6]'. 해당 응용 프로그램을 닫고 다시 시도하세요." />
+    <String Id="Error1604" Value="'[2]' 제품이 이미 설치되어 있어 이 제품의 설치를 방해하고 있습니다. 두 제품은 호환되지 않습니다." />
+    <String Id="Error1605" Value="볼륨 '[2]'에 디스크 공간이 충분하지 않아 복구가 활성화된 상태에서 설치를 계속할 수 없습니다. [3] KB가 필요하지만 [4] KB만 사용할 수 있습니다. 복구 정보를 저장하지 않고 설치를 계속하려면 무시를 클릭하고, 다시 시도를 클릭하여 사용 가능한 공간을 확인하거나, 설치를 종료하려면 취소를 클릭하세요." />
+    <String Id="Error1606" Value="네트워크 위치에 액세스할 수 없습니다 [2]." />
+    <String Id="Error1607" Value="설치를 계속하기 전에 다음 응용 프로그램을 닫아야 합니다:" />
+    <String Id="Error1608" Value="이 제품을 설치하기 위해 이전에 설치된 호환 제품을 머신에서 찾을 수 없습니다." />
+    <String Id="Error1609" Value="보안 설정을 적용하는 동안 오류가 발생했습니다. [2]는 유효한 사용자 또는 그룹이 아닙니다. 이는 패키지에 문제가 있거나 네트워크의 도메인 컨트롤러에 연결하는 문제일 수 있습니다. 네트워크 연결을 확인한 후 재시도 또는 취소를 클릭하여 설치를 종료합니다. {{사용자의 SID를 찾을 수 없습니다, 시스템 오류 [3]}}}" />
+    <String Id="Error1701" Value="키 [2]가 잘못되었습니다. 올바른 키를 입력했는지 확인합니다." />
+    <String Id="Error1702" Value="[2]의 구성을 계속하려면 설치 프로그램이 시스템을 재시작해야 합니다. 지금 재시작하려면 예를 클릭하거나 나중에 수동으로 재시작하려면 아니요를 클릭하세요." />
+    <String Id="Error1703" Value="[2]에 대한 구성 변경 사항을 적용하려면 시스템을 재시작해야 합니다. 지금 재시작하려면 예를 클릭하거나 나중에 수동으로 재시작하려면 아니요를 클릭하세요." />
+    <String Id="Error1704" Value="[2]에 대한 설치가 현재 일시 중단되었습니다. 계속하려면 해당 설치에서 수행한 변경 사항을 실행 취소해야 합니다. 해당 변경 사항을 실행 취소하시겠습니까?" />
+    <String Id="Error1705" Value="이 제품의 이전 설치가 진행 중입니다. 계속하려면 해당 설치에서 변경한 내용을 실행 취소해야 합니다. 해당 변경 사항을 실행 취소하시겠습니까?" />
+    <String Id="Error1706" Value="제품 [2]에 대한 설치 패키지를 찾을 수 없습니다. 설치 패키지 '[3]'의 유효한 복사본을 사용하여 다시 설치를 시도하세요." />
+    <String Id="Error1707" Value="설치가 성공적으로 완료되었습니다." />
+    <String Id="Error1708" Value="설치에 실패했습니다." />
+    <String Id="Error1709" Value="제품: [2] -- [3]" />
+    <String Id="Error1710" Value="컴퓨터를 이전 상태로 복원하거나 나중에 설치를 계속할 수 있습니다. 복원하시겠습니까?" />
+    <String Id="Error1711" Value="디스크에 설치 정보를 쓰는 동안 오류가 발생했습니다. 디스크 공간이 충분한지 확인하고 재시도 또는 취소를 클릭하여 설치를 종료합니다." />
+    <String Id="Error1712" Value="컴퓨터를 이전 상태로 복원하는 데 필요한 파일을 하나 이상 찾을 수 없습니다. 복원이 불가능합니다." />
+    <String Id="Error1713" Value="[2] 필요한 제품 중 하나를 설치할 수 없습니다. 기술 지원 그룹에 문의하세요. {시스템 문자열: [3].}}" />
+    <String Id="Error1714" Value="이전 버전의 [2]는 제거할 수 없습니다. 기술 지원 그룹에 문의하세요. {시스템 문자열 [3].}}" />
+    <String Id="Error1715" Value="설치됨 [2]" />
+    <String Id="Error1716" Value="구성됨 [2]" />
+    <String Id="Error1717" Value="제거됨 [2]" />
+    <String Id="Error1718" Value="[2] 파일이 디지털 서명 정책에 의해 거부되었습니다." />
+    <String Id="Error1719" Value="Windows 설치 서비스에 액세스할 수 없습니다. 안전 모드에서 Windows를 실행 중이거나 Windows 설치 프로그램이 올바르게 설치되지 않은 경우 이러한 문제가 발생할 수 있습니다. 지원 담당자에게 문의하여 도움을 요청하세요." />
+    <String Id="Error1720" Value="이 Windows Installer 패키지에 문제가 있습니다. 이 설치를 완료하는 데 필요한 스크립트를 실행할 수 없습니다. 지원 담당자나 패키지 공급업체에 문의하세요. {{사용자 지정 작업 [2] 스크립트 오류 [3], [4]: [5] 줄 [6], 열 [7], [8] }}" />
+    <String Id="Error1721" Value="이 Windows Installer 패키지에 문제가 있습니다. 이 설치를 완료하는 데 필요한 프로그램을 실행할 수 없습니다. 지원 담당자나 패키지 공급업체에 문의하세요. {{작업: [2], 위치: [3], 명령: [4] }}" />
+    <String Id="Error1722" Value="이 Windows Installer 패키지에 문제가 있습니다. 설치 과정의 일부로 실행된 프로그램이 예상대로 완료되지 않았습니다. 지원 담당자나 패키지 공급업체에 문의하세요. {작업 [2], 위치: [3], 명령: [4] }}" />
+    <String Id="Error1723" Value="이 Windows Installer 패키지에 문제가 있습니다. 이 설치를 완료하는 데 필요한 DLL을 실행할 수 없습니다. 지원 담당자나 패키지 공급업체에 문의하세요. {{작업 [2], 항목: [3], 라이브러리: [4] }}" />
+    <String Id="Error1724" Value="제거가 성공적으로 완료되었습니다." />
+    <String Id="Error1725" Value="제거가 실패했습니다." />
+    <String Id="Error1726" Value="광고가 성공적으로 완료되었습니다." />
+    <String Id="Error1727" Value="광고가 실패했습니다." />
+    <String Id="Error1728" Value="구성이 성공적으로 완료되었습니다." />
+    <String Id="Error1729" Value="구성이 실패했습니다." />
+    <String Id="Error1730" Value="이 응용 프로그램을 제거하려면 관리자여야 합니다. 이 응용 프로그램을 제거하려면 관리자로 로그인하거나 기술 지원 그룹에 문의하여 도움을 받을 수 있습니다." />
+    <String Id="Error1801" Value="[2] 경로가 잘못되었습니다. 올바른 경로를 지정하세요." />
+    <String Id="Error1802" Value="메모리가 부족합니다. 다시 시도하기 전에 다른 응용 프로그램을 종료하세요." />
+    <String Id="Error1803" Value="드라이브 [2]에 디스크가 없습니다. 디스크를 삽입하고 재시도를 클릭하거나 취소를 클릭하여 이전에 선택한 볼륨으로 돌아가세요." />
+    <String Id="Error1804" Value="드라이브 [2]에 디스크가 없습니다. 디스크를 삽입하고 다시 시도를 클릭하거나 취소를 클릭하여 탐색 대화 상자로 돌아가서 다른 볼륨을 선택하세요." />
+    <String Id="Error1805" Value="폴더 [2]가 존재하지 않습니다. 기존 폴더로 가는 경로를 입력하세요." />
+    <String Id="Error1806" Value="이 폴더를 읽을 권한이 충분하지 않습니다." />
+    <String Id="Error1807" Value="설치할 유효한 대상 폴더를 확인할 수 없습니다." />
+    <String Id="Error1901" Value="원본 설치 데이터베이스에서 읽으려고 시도하는 동안 오류가 발생했습니다: [2]." />
+    <String Id="Error1902" Value="재부팅 작업 예약: 파일 이름 [2]를 [3]으로 변경 중입니다. 작업을 완료하려면 재부팅해야 합니다." />
+    <String Id="Error1903" Value="재부팅 작업 예약: 파일 삭제 [2]. 작업을 완료하려면 재부팅해야 합니다." />
+    <String Id="Error1904" Value="모듈 [2]을 등록하지 못했습니다. HRESULT [3]. 지원 담당자에게 문의하세요." />
+    <String Id="Error1905" Value="모듈 [2]의 등록을 취소하지 못했습니다. HRESULT [3]. 지원 담당자에게 문의하세요." />
+    <String Id="Error1906" Value="패키지를 캐시하지 못했습니다 [2]. 오류: [3]. 지원 담당자에게 문의하세요." />
+    <String Id="Error1907" Value="글꼴 [2]을 등록할 수 없습니다. 글꼴을 설치할 수 있는 충분한 권한이 있는지, 시스템이 이 글꼴을 지원하는지 확인하세요." />
+    <String Id="Error1908" Value="글꼴 [2]를 등록 취소할 수 없습니다. 글꼴을 제거할 수 있는 충분한 권한이 있는지 확인하세요." />
+    <String Id="Error1909" Value="바로 가기 [2]를 만들 수 없습니다. 대상 폴더가 존재하고 액세스할 수 있는지 확인하세요." />
+    <String Id="Error1910" Value="바로 가기를 제거할 수 없습니다 [2]. 바로 가기 파일이 존재하고 액세스할 수 있는지 확인하세요." />
+    <String Id="Error1911" Value="파일 형식 라이브러리를 등록할 수 없습니다 [2]. 지원 담당자에게 문의하세요." />
+    <String Id="Error1912" Value="파일 유형 라이브러리를 등록 취소할 수 없습니다 [2]. 지원 담당자에게 문의하세요." />
+    <String Id="Error1913" Value="ini 파일을 업데이트할 수 없습니다 [2][3]. 파일이 존재하는지, 접근할 수 있는지 확인하세요." />
+    <String Id="Error1914" Value="재부팅 시 파일 [2]를 파일 [3]로 대체하도록 예약할 수 없습니다. 파일 [3]에 대한 쓰기 권한이 있는지 확인하세요." />
+    <String Id="Error1915" Value="ODBC 드라이버 관리자를 제거하는 중 오류 발생, ODBC 오류 [2]: [3]. 지원 담당자에게 문의하세요." />
+    <String Id="Error1916" Value="ODBC 드라이버 관리자 설치 중 오류, ODBC 오류 [2]: [3]. 지원 담당자에게 문의하세요." />
+    <String Id="Error1917" Value="ODBC 드라이버 제거 오류: [4], ODBC 오류: [2]: [3]. ODBC 드라이버를 제거할 수 있는 충분한 권한이 있는지 확인하세요." />
+    <String Id="Error1918" Value="ODBC 드라이버 설치 중 오류: [4], ODBC 오류: [2]: [3. 파일 [4]이 존재하는지, 그리고 파일에 접근할 수 있는지 확인하세요." />
+    <String Id="Error1919" Value="ODBC 데이터 소스 구성 오류: [4], ODBC 오류: [2]: [3. 파일 [4]이 존재하고 액세스할 수 있는지 확인하세요." />
+    <String Id="Error1920" Value="Service '[2]' ([3])을 시작하지 못했습니다. 시스템 서비스를 시작할 수 있는 충분한 권한이 있는지 확인하세요." />
+    <String Id="Error1921" Value="Service '[2]' ([3])을 중지할 수 없습니다. 시스템 서비스를 중지할 수 있는 충분한 권한이 있는지 확인하세요." />
+    <String Id="Error1922" Value="Service '[2]' ([3])을 삭제할 수 없습니다. 시스템 서비스를 제거할 수 있는 충분한 권한이 있는지 확인하세요." />
+    <String Id="Error1923" Value="Service '[2]' ([3])을 설치할 수 없습니다. 시스템 서비스를 설치할 수 있는 충분한 권한이 있는지 확인하세요." />
+    <String Id="Error1924" Value="환경 변수 '[2]'를 업데이트할 수 없습니다. 환경 변수를 수정할 수 있는 충분한 권한이 있는지 확인하세요." />
+    <String Id="Error1925" Value="머신의 모든 사용자에게 이 설치를 완료할 권한이 충분하지 않습니다. 관리자로 로그인한 다음 이 설치를 다시 시도하세요." />
+    <String Id="Error1926" Value="파일 '[3]'에 대한 파일 보안을 설정할 수 없습니다. 오류: [2]. 이 파일에 대한 보안 권한을 수정할 수 있는 충분한 권한이 있는지 확인하세요." />
+    <String Id="Error1927" Value="이 컴퓨터에는 컴포넌트 서비스 (COM+ 1.0)가 설치되어 있지 않습니다. 이 설치를 완료하려면 컴포넌트 서비스가 필요합니다. 컴포넌트 서비스는 Windows 2000에서 사용할 수 있습니다." />
+    <String Id="Error1928" Value="COM+ 응용 프로그램을 등록하는 중 오류가 발생했습니다. 자세한 내용은 지원 담당자에게 문의하세요." />
+    <String Id="Error1929" Value="COM+ 응용 프로그램 등록을 취소하는 중 오류가 발생했습니다. 자세한 내용은 지원 담당자에게 문의하세요." />
+    <String Id="Error1930" Value="서비스 '[2]'([3])에 대한 설명을 변경할 수 없습니다." />
+    <String Id="Error1931" Value="Windows Installer 서비스는 파일이 Windows에 의해 보호되므로 [2] 시스템 파일을 업데이트할 수 없습니다. 이 프로그램이 올바르게 작동하려면 운영 체제를 업데이트해야 할 수도 있습니다. {{패키지 버전: [3], 운영 체제 보호 버전: [4]}}" />
+    <String Id="Error1932" Value="Windows Installer 서비스가 보호된 Windows 파일을 업데이트할 수 없습니다 [2]. {{패키지 버전: [3], OS 보호 버전: [4], SFP 오류: [5]}}" />
+    <String Id="Error1933" Value="Windows Installer 서비스는 하나 이상의 보호된 Windows 파일을 업데이트할 수 없습니다. {{SFP String: [2]. 보호된 파일 목록:\\r\n[3]}}" />
+    <String Id="Error1934" Value="사용자 설치는 머신 정책에 따라 비활성화됩니다." />
+    <String Id="Error1935" Value="어셈블리 구성 요소 [2]를 설치하는 동안 오류가 발생했습니다. HRESULT: [3]. {{조립 인터페이스: [4], 기능: [5], 조립 이름: [6]}}" />
+
+    <!-- 자체/특수 오류 -->
+    <String Id="Error25001" Value="설치를 계속하려면 응용 프로그램 &quot;[2]&quot;을 닫아야 합니다." />
+
+    <String Id="ProgressTextInstallValidate" Value="설치 검증 중" />
+    <String Id="ProgressTextInstallFiles" Value="새 파일 복사 중" />
+    <String Id="ProgressTextInstallFilesTemplate" Value="파일: [1],  디렉터리: [9],  크기: [6]" />
+    <String Id="ProgressTextInstallAdminPackage" Value="네트워크 설치 파일 복사 중" />
+    <String Id="ProgressTextInstallAdminPackageTemplate" Value="파일: [1], 디렉터리: [9], 크기: [6]" />
+    <String Id="ProgressTextFileCost" Value="컴퓨팅 공간 요구 사항" />
+    <String Id="ProgressTextCostInitialize" Value="컴퓨팅 공간 요구 사항" />
+    <String Id="ProgressTextCostFinalize" Value="컴퓨팅 공간 요구 사항" />
+    <String Id="ProgressTextCreateShortcuts" Value="바로 가기 만들기" />
+    <String Id="ProgressTextCreateShortcutsTemplate" Value="바로 가기: [1]" />
+    <String Id="ProgressTextPublishComponents" Value="적격 구성 요소 게시" />
+    <String Id="ProgressTextPublishComponentsTemplate" Value="구성 요소 ID: [1], 한정자: [2]" />
+    <String Id="ProgressTextPublishFeatures" Value="제품 기능 게시" />
+    <String Id="ProgressTextPublishFeaturesTemplate" Value="기능: [1]" />
+    <String Id="ProgressTextPublishProduct" Value="제품 정보 게시" />
+    <String Id="ProgressTextRegisterClassInfo" Value="클래스 서버 등록 중" />
+    <String Id="ProgressTextRegisterClassInfoTemplate" Value="클래스 Id: [1]" />
+    <String Id="ProgressTextRegisterExtensionInfo" Value="확장자 서버 등록 중" />
+    <String Id="ProgressTextRegisterExtensionInfoTemplate" Value="확장자: [1]" />
+    <String Id="ProgressTextRegisterMIMEInfo" Value="MIME 정보 등록 중" />
+    <String Id="ProgressTextRegisterMIMEInfoTemplate" Value="MIME 콘텐츠 유형: [1], 확장자: [2]" />
+    <String Id="ProgressTextRegisterProgIdInfo" Value="프로그램 식별자 등록 중" />
+    <String Id="ProgressTextRegisterProgIdInfoTemplate" Value="ProgId: [1]" />
+    <String Id="ProgressTextAllocateRegistrySpace" Value="레지스트리 공간 할당" />
+    <String Id="ProgressTextAllocateRegistrySpaceTemplate" Value="남은 공간: [1]" />
+    <String Id="ProgressTextAppSearch" Value="설치된 응용 프로그램 검색 중" />
+    <String Id="ProgressTextAppSearchTemplate" Value="속성: [1], 서명: [2]" />
+    <String Id="ProgressTextBindImage" Value="바인딩 실행 파일" />
+    <String Id="ProgressTextBindImageTemplate" Value="파일: [1]" />
+    <String Id="ProgressTextCCPSearch" Value="적격 제품 검색" />
+    <String Id="ProgressTextCreateFolders" Value="폴더 만들기" />
+    <String Id="ProgressTextCreateFoldersTemplate" Value="폴더: [1]" />
+    <String Id="ProgressTextDeleteServices" Value="서비스 삭제 중" />
+    <String Id="ProgressTextDeleteServicesTemplate" Value="서비스: [1]" />
+    <String Id="ProgressTextDuplicateFiles" Value="중복 파일 만들기" />
+    <String Id="ProgressTextDuplicateFilesTemplate" Value="파일: [1],  디렉터리: [9],  크기: [6]" />
+    <String Id="ProgressTextFindRelatedProducts" Value="관련 응용 프로그램 검색 중" />
+    <String Id="ProgressTextFindRelatedProductsTemplate" Value="응용 프로그램 발견: [1]" />
+    <String Id="ProgressTextInstallODBC" Value="ODBC 구성 요소 설치" />
+    <String Id="ProgressTextInstallServices" Value="새 서비스 설치 중" />
+    <String Id="ProgressTextInstallServicesTemplate" Value="서비스: [2]" />
+    <String Id="ProgressTextLaunchConditions" Value="실행 조건 평가" />
+    <String Id="ProgressTextMigrateFeatureStates" Value="관련 응용 프로그램에서 기능 상태 마이그레이션" />
+    <String Id="ProgressTextMigrateFeatureStatesTemplate" Value="응용 프로그램: [1]" />
+    <String Id="ProgressTextMoveFiles" Value="파일 이동 중" />
+    <String Id="ProgressTextMoveFilesTemplate" Value="파일: [1],  디렉터리: [9],  크기: [6]" />
+    <String Id="ProgressTextPatchFiles" Value="파일 패치 중" />
+    <String Id="ProgressTextPatchFilesTemplate" Value="파일: [1],  디렉터리: [2],  크기: [3]" />
+    <String Id="ProgressTextProcessComponents" Value="구성 요소 등록 업데이트 중" />
+    <String Id="ProgressTextRegisterComPlus" Value="COM+ 응용 프로그램 및 구성 요소 등록 중" />
+    <String Id="ProgressTextRegisterComPlusTemplate" Value="앱Id: [1]{{, 앱유형: [2], 사용자: [3], RSN: [4]}}" />
+    <String Id="ProgressTextRegisterFonts" Value="글꼴 등록 중" />
+    <String Id="ProgressTextRegisterFontsTemplate" Value="글꼴: [1]" />
+    <String Id="ProgressTextRegisterProduct" Value="제품 등록 중" />
+    <String Id="ProgressTextRegisterProductTemplate" Value="[1]" />
+    <String Id="ProgressTextRegisterTypeLibraries" Value="유형 라이브러리 등록 중" />
+    <String Id="ProgressTextRegisterTypeLibrariesTemplate" Value="LibID: [1]" />
+    <String Id="ProgressTextRegisterUser" Value="사용자 등록 중" />
+    <String Id="ProgressTextRegisterUserTemplate" Value="[1]" />
+    <String Id="ProgressTextRemoveDuplicateFiles" Value="중복된 파일 제거 중" />
+    <String Id="ProgressTextRemoveDuplicateFilesTemplate" Value="파일: [1], 디렉터리: [9]" />
+    <String Id="ProgressTextRemoveEnvironmentStrings" Value="환경 문자열 업데이트 중" />
+    <String Id="ProgressTextRemoveEnvironmentStringsTemplate" Value="이름: [1], 값: [2], 작업 [3]" />
+    <String Id="ProgressTextRemoveExistingProducts" Value="응용 프로그램 제거중" />
+    <String Id="ProgressTextRemoveExistingProductsTemplate" Value="응용 프로그램: [1], 명령줄: [2]" />
+    <String Id="ProgressTextRemoveFiles" Value="파일 제거 중" />
+    <String Id="ProgressTextRemoveFilesTemplate" Value="파일: [1], 디렉터리: [9]" />
+    <String Id="ProgressTextRemoveFolders" Value="폴더 제거 중" />
+    <String Id="ProgressTextRemoveFoldersTemplate" Value="폴더: [1]" />
+    <String Id="ProgressTextRemoveIniValues" Value="INI 파일 항목 제거 중" />
+    <String Id="ProgressTextRemoveIniValuesTemplate" Value="파일: [1],  섹션: [2],  키: [3], 값: [4]" />
+    <String Id="ProgressTextRemoveODBC" Value="ODBC 구성 요소 제거 중" />
+    <String Id="ProgressTextRemoveRegistryValues" Value="시스템 레지스트리 값 제거 중" />
+    <String Id="ProgressTextRemoveRegistryValuesTemplate" Value="키: [1], 이름: [2]" />
+    <String Id="ProgressTextRemoveShortcuts" Value="바로 가기 제거 중" />
+    <String Id="ProgressTextRemoveShortcutsTemplate" Value="바로 가기: [1]" />
+    <String Id="ProgressTextRMCCPSearch" Value="적격 제품 검색" />
+    <String Id="ProgressTextSelfRegModules" Value="모듈 등록 중" />
+    <String Id="ProgressTextSelfRegModulesTemplate" Value="파일: [1], 폴더: [2]" />
+    <String Id="ProgressTextSelfUnregModules" Value="모듈 등록 헤제 중" />
+    <String Id="ProgressTextSelfUnregModulesTemplate" Value="파일: [1], 폴더: [2]" />
+    <String Id="ProgressTextSetODBCFolders" Value="ODBC 디렉터리 초기화 중" />
+    <String Id="ProgressTextStartServices" Value="서비스 시작 중" />
+    <String Id="ProgressTextStartServicesTemplate" Value="서비스: [1]" />
+    <String Id="ProgressTextStopServices" Value="서비스 중지 중" />
+    <String Id="ProgressTextStopServicesTemplate" Value="서비스: [1]" />
+    <String Id="ProgressTextUnpublishComponents" Value="적격 구성 요소 게시 해제 중" />
+    <String Id="ProgressTextUnpublishComponentsTemplate" Value="구성 요소 ID: [1], 한정자: [2]" />
+    <String Id="ProgressTextUnpublishFeatures" Value="제품 기능 게시 해제 중" />
+    <String Id="ProgressTextUnpublishFeaturesTemplate" Value="기능: [1]" />
+    <String Id="ProgressTextUnregisterClassInfo" Value="클래스 서버 등록 해제 중" />
+    <String Id="ProgressTextUnregisterClassInfoTemplate" Value="클래스 Id: [1]" />
+    <String Id="ProgressTextUnregisterComPlus" Value="COM+ 응용 프로그램 및 구성 요소 등록 해제 중" />
+    <String Id="ProgressTextUnregisterComPlusTemplate" Value="앱 Id: [1]{{, 앱 유형: [2]}}" />
+    <String Id="ProgressTextUnregisterExtensionInfo" Value="확장 서버 등록 해제 중" />
+    <String Id="ProgressTextUnregisterExtensionInfoTemplate" Value="확장: [1]" />
+    <String Id="ProgressTextUnregisterFonts" Value="글꼴 등록 해제 중" />
+    <String Id="ProgressTextUnregisterFontsTemplate" Value="글꼴: [1]" />
+    <String Id="ProgressTextUnregisterMIMEInfo" Value="MIME 정보 등록 해제 중" />
+    <String Id="ProgressTextUnregisterMIMEInfoTemplate" Value="MIME 콘텐츠 유형: [1], 확장자: [2]" />
+    <String Id="ProgressTextUnregisterProgIdInfo" Value="프로그램 식별자 등록 해제 중" />
+    <String Id="ProgressTextUnregisterProgIdInfoTemplate" Value="ProgId: [1]" />
+    <String Id="ProgressTextUnregisterTypeLibraries" Value="유형 라이브러리 등록 해제 중" />
+    <String Id="ProgressTextUnregisterTypeLibrariesTemplate" Value="LibID: [1]" />
+    <String Id="ProgressTextWriteEnvironmentStrings" Value="환경 문자열 업데이트 중" />
+    <String Id="ProgressTextWriteEnvironmentStringsTemplate" Value="이름: [1], 값: [2], 작업 [3]" />
+    <String Id="ProgressTextWriteIniValues" Value="INI 파일 값 쓰는 중" />
+    <String Id="ProgressTextWriteIniValuesTemplate" Value="파일: [1],  섹션: [2],  키: [3], 값: [4]" />
+    <String Id="ProgressTextWriteRegistryValues" Value="시스템 레지스트리 값 쓰는 중" />
+    <String Id="ProgressTextWriteRegistryValuesTemplate" Value="키: [1], 이름: [2], 값: [3]" />
+    <String Id="ProgressTextAdvertise" Value="광고 응용 프로그램" />
+    <String Id="ProgressTextGenerateScript" Value="작업을 위한 스크립트 작업 생성 중:" />
+    <String Id="ProgressTextGenerateScriptTemplate" Value="[1]" />
+    <String Id="ProgressTextInstallSFPCatalogFile" Value="시스템 카탈로그 설치 중" />
+    <String Id="ProgressTextInstallSFPCatalogFileTemplate" Value="파일: [1],  종속성: [2]" />
+    <String Id="ProgressTextMsiPublishAssemblies" Value="어셈블리 정보 게시 중" />
+    <String Id="ProgressTextMsiPublishAssembliesTemplate" Value="응용 프로그램 컨텍스트:[1], 어셈블리 이름:[2]" />
+    <String Id="ProgressTextMsiUnpublishAssemblies" Value="어셈블리 정보 게시 해제 중" />
+    <String Id="ProgressTextMsiUnpublishAssembliesTemplate" Value=""응용 프로그램 컨텍스트:[1], 어셈블리 이름:[2]" />
+    <String Id="ProgressTextRollback" Value="롤백 작업:" />
+    <String Id="ProgressTextRollbackTemplate" Value="[1]" />
+    <String Id="ProgressTextRollbackCleanup" Value="백업 파일 제거 중" />
+    <String Id="ProgressTextRollbackCleanupTemplate" Value="파일: [1]" />
+    <String Id="ProgressTextUnmoveFiles" Value="이동된 파일 제거 중" />
+    <String Id="ProgressTextUnmoveFilesTemplate" Value="파일: [1], 디렉터리: [9]" />
+    <String Id="ProgressTextUnpublishProduct" Value="제품 정보 게시 해제 중" />
+
+    <String Id="ProgressTextCheckTargetDir" Value="대상 디렉터리를 확인하는 중 ..." />
+
+    <String Id="ProgressTextSupDrvInt" Value="지원 드라이버 설치 중 ..." />
+    <String Id="ProgressTextSupDrvStart" Value="지원 드라이버 시작 중 ..." />
+    <String Id="ProgressTextSupDrvUninst" Value="지원 드라이버를 제거 중 ..." />
+
+    <String Id="ProgressTextUSBDevDrvInst" Value="USB 장치 드라이버 설치 중 ..." />
+    <String Id="ProgressTextUSBDevDrvUninst" Value="USB 장치 드라이버 제거 중 ..." />
+    <String Id="ProgressTextUSBMonDrvInst" Value="USB 모니터 드라이버 설치 중 ..." />
+    <String Id="ProgressTextUSBMonDrvStart" Value="USB 모니터 드라이버 시작 중 ..." />
+    <String Id="ProgressTextUSBMonDrvUninst" Value="USB 모니터 드라이버 제거 중 ..." />
+
+    <String Id="ProgressTextNetAdp6Create" Value="네트워크 어댑터 생성 중 ..." />
+    <String Id="ProgressTextNetAdp6Remove" Value="네트워크 어댑터를 제거 중 ..." />
+    <String Id="ProgressTextNetAdp6Update" Value="네트워크 어댑터 업데이트 중 ..." />
+    <String Id="ProgressTextNetAdp6Uninst" Value="네트워크 어댑터를 제거 중 ..." />
+
+    <String Id="ProgressTextNetLwfInst" Value="네트워크 필터 설치 중 ..." />
+    <String Id="ProgressTextNetLwfRollbackInst" Value="네트워크 필터 설치 롤백 중 ..." />
+    <String Id="ProgressTextNetLwfUninst" Value="네트워크 필터 제거 중 ..." />
+    <String Id="ProgressTextNetLwfRollbackUninst" Value="네트워크 필터 제거 롤백 중 ..." />
+
+    <String Id="UITextbytes" Value="바이트" />
+    <String Id="UITextGB" Value="GB" />
+    <String Id="UITextKB" Value="KB" />
+    <String Id="UITextMB" Value="MB" />
+    <String Id="UITextMenuAbsent" Value="설치하지 않음" />
+    <String Id="UITextMenuAdvertise" Value="필요할 때 기능이 설치됩니다" />
+    <String Id="UITextMenuAllCD" Value="전체 기능이 CD에서 실행되도록 설치됩니다" />
+    <String Id="UITextMenuAllLocal" Value="전체 기능이 로컬 하드 드라이브에 설치됩니다" />
+    <String Id="UITextMenuAllNetwork" Value="전체 기능이 네트워크에서 실행되도록 설치됩니다" />
+    <String Id="UITextMenuCD" Value="CD에서 실행되도록 설치됩니다" />
+    <String Id="UITextMenuLocal" Value="로컬 하드 드라이브에 설치됩니다" />
+    <String Id="UITextMenuNetwork" Value="네트워크에서 실행되도록 설치됩니다" />
+    <String Id="UITextScriptInProgress" Value="필요한 정보 수집..." />
+    <String Id="UITextSelAbsentAbsent" Value="이 기능은 제거된 상태로 유지됩니다" />
+    <String Id="UITextSelAbsentAdvertise" Value="이 기능은 필요할 때 설치하도록 설정됩니다" />
+    <String Id="UITextSelAbsentCD" Value="이 기능은 CD에서 실행되도록 설치됩니다" />
+    <String Id="UITextSelAbsentLocal" Value="이 기능은 로컬 하드 드라이브에 설치됩니다" />
+    <String Id="UITextSelAbsentNetwork" Value="이 기능은 네트워크에서 실행되도록 설치됩니다" />
+    <String Id="UITextSelAdvertiseAbsent" Value="이 기능은 사용할 수 없게 됩니다" />
+    <String Id="UITextSelAdvertiseAdvertise" Value="필요할 때 설치됩니다" />
+    <String Id="UITextSelAdvertiseCD" Value="이 기능은 CD에서 실행할 수 있습니다" />
+    <String Id="UITextSelAdvertiseLocal" Value="이 기능은 로컬 하드 드라이브에 설치됩니다" />
+    <String Id="UITextSelAdvertiseNetwork" Value="이 기능은 네트워크에서 실행할 수 있습니다" />
+    <String Id="UITextSelCDAbsent" Value="이 기능은 완전히 제거되어 CD에서 실행할 수 없습니다" />
+    <String Id="UITextSelCDAdvertise" Value="이 기능은 실행 상태에서 CD 상태로 변경되어 필요할 때 설치되도록 설정됩니다" />
+    <String Id="UITextSelCDCD" Value="이 기능은 CD에서 계속 실행됩니다" />
+    <String Id="UITextSelCDLocal" Value="이 기능은 CD 상태에서 로컬 하드 드라이브에 설치되도록 실행에서 변경됩니다" />
+    <String Id="UITextSelChildCostNeg" Value="이 기능은 하드 드라이브에서 [1]을(를) 해제합니다." />
+    <String Id="UITextSelChildCostPos" Value="이 기능은 하드 드라이브에 [1]이(가) 필요합니다." />
+    <String Id="UITextSelCostPending" Value="이 기능의 컴파일 비용..." />
+    <String Id="UITextSelLocalAbsent" Value="이 기능은 완전히 제거됩니다" />
+    <String Id="UITextSelLocalAdvertise" Value="이 기능은 로컬 하드 드라이브에서 제거되지만 필요할 때 설치하도록 설정됩니다" />
+    <String Id="UITextSelLocalCD" Value="이 기능은 로컬 하드 드라이브에서 제거되지만 CD에서 계속 실행할 수 있습니다" />
+    <String Id="UITextSelLocalLocal" Value="이 기능은 로컬 하드 드라이브에 그대로 유지됩니다" />
+    <String Id="UITextSelLocalNetwork" Value="이 기능은 로컬 하드 드라이브에서 제거되지만 네트워크에서 계속 실행할 수 있습니다" />
+    <String Id="UITextSelNetworkAbsent" Value="이 기능은 완전히 제거되어 네트워크에서 실행할 수 없습니다" />
+    <String Id="UITextSelNetworkAdvertise" Value="이 기능은 실행 상태에서 네트워크 상태로 변경되어 필요할 때 설치되도록 설정됩니다" />
+    <String Id="UITextSelNetworkLocal" Value="이 기능은 네트워크 상태에서 로컬 하드 드라이브에 설치되도록 실행에서 변경됩니다" />
+    <String Id="UITextSelNetworkNetwork" Value="이 기능은 네트워크에서 계속 실행됩니다" />
+    <String Id="UITextSelParentCostNegNeg" Value="이 기능은 하드 드라이브에서 [1]을 확보합니다. [3]개의 하위 기능 중 [2]개가 선택되었습니다. 하위 기능은 하드 드라이브에서 [4]를 확보합니다." />
+    <String Id="UITextSelParentCostNegPos" Value="이 기능은 하드 드라이브에서 [1]을 확보합니다. [3]개의 하위 기능 중 [2]개가 선택되었습니다. 하위 기능은 하드 드라이브에서 [4]를 필요로 합니다." />
+    <String Id="UITextSelParentCostPosNeg" Value="이 기능은 하드 드라이브에 [1]을 필요로 합니다. [3]개의 하위 기능 중 [2]개가 선택되었습니다. 하위 기능들은 하드 드라이브에서 [4]를 확보합니다." />
+    <String Id="UITextSelParentCostPosPos" Value="이 기능은 하드 드라이브에 [1]을 필요로 합니다. [3]개의 하위 기능 중 [2]개가 선택되었습니다. 하위 기능들은 하드 드라이브에서 [4]를 필요로 합니다." />
+    <String Id="UITextTimeRemaining" Value="남은 시간: {[1]분 }{[2]초}" />
+    <String Id="UITextVolumeCostAvailable" Value="사용 가능" />
+    <String Id="UITextVolumeCostDifference" Value="차이" />
+    <String Id="UITextVolumeCostRequired" Value="필수" />
+    <String Id="UITextVolumeCostSize" Value="디스크 크기" />
+    <String Id="UITextVolumeCostVolume" Value="볼륨" />
+
+</WixLocalization>
