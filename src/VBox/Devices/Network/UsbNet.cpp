@@ -1976,12 +1976,12 @@ static int usbNetHandleDefaultPipe(PUSBNET pThis, PUSBNETEP pEp, PVUSBURB pUrb)
                 NtbParams.bmNtbFormatsSupported   = RT_BIT(0);
                 NtbParams.dwNtbInMaxSize          = _4K;
                 NtbParams.wNdpInDivisor           = 4;
-                NtbParams.wNdpInPayloadRemainder  = 4;
+                NtbParams.wNdpInPayloadRemainder  = 0;
                 NtbParams.wNdpInAlignment         = 4;
                 NtbParams.u16Rsvd0                = 0;
                 NtbParams.dwNtbOutMaxSize         = _4K;
                 NtbParams.wNdpOutDivisor          = 4;
-                NtbParams.wNdpOutPayloadRemainder = 4;
+                NtbParams.wNdpOutPayloadRemainder = 0;
                 NtbParams.wNdpOutAlignment        = 4;
                 NtbParams.wNtpOutMaxDatagrams     = 1;
 
