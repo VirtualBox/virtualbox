@@ -910,7 +910,10 @@ void UIMiniToolBar::sltAdjust()
 
     /* Get corresponding host-screen: */
     const int iHostScreenCount = UIDesktopWidgetWatchdog::screenCount();
-    int iHostScreen = UIDesktopWidgetWatchdog::screenNumber(m_pParent);
+    /* Resolve the host-screen from the parent's assigned geometry rather than from
+     * its native QWindow association, which can still lag behind the geometry set by
+     * UIMachineWindowFullscreen::placeOnScreen() during a full-screen transition: */
+    int iHostScreen = UIDesktopWidgetWatchdog::screenNumber(m_pParent->geometry().center());
     // WORKAROUND:
     // When switching host-screen count, especially in complex cases where RDP client is "replacing" host-screen(s) with own virtual-screen(s),
     // Qt could behave quite arbitrary and laggy, and due to racing there could be a situation when QDesktopWidget::screenNumber() returns -1
