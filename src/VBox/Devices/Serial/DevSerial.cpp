@@ -61,6 +61,8 @@ typedef struct DEVSERIAL
     RTIOPORT                        PortAddress;
     /** The I/O ports registration. */
     IOMIOPORTHANDLE                 hIoPorts;
+    /** The MMIO region registration. */
+    IOMMMIOHANDLE                   hMmio;
 
     /** The UART core. */
     UARTCORE                        UartCore;
@@ -445,6 +447,8 @@ static DECLCALLBACK(int) serialR3Construct(PPDMDEVINS pDevIns, int iInstance, PC
 
     pThis->uIrq        = uIrq;
     pThis->PortAddress = uIoAddress;
+    pThis->hIoPorts    = NIL_IOMIOPORTHANDLE;
+    pThis->hMmio       = NIL_IOMMMIOHANDLE;
 
     /*
      * Init locks, using explicit locking where necessary.
@@ -471,9 +475,8 @@ static DECLCALLBACK(int) serialR3Construct(PPDMDEVINS pDevIns, int iInstance, PC
         /*
          * Register and map the MMIO region.
          */
-        IOMMMIOHANDLE hMmio;
         rc = PDMDevHlpMmioCreateAndMap(pDevIns, GCPhysMmioBase, 8, serialMmioWrite, serialMmioRead,
-                                       IOMMMIO_FLAGS_READ_PASSTHRU | IOMMMIO_FLAGS_WRITE_PASSTHRU, "Serial", &hMmio);
+                                       IOMMMIO_FLAGS_READ_PASSTHRU | IOMMMIO_FLAGS_WRITE_PASSTHRU, "Serial", &pThis->hMmio);
         AssertRCReturn(rc, rc);
     }
 
@@ -511,8 +514,17 @@ static DECLCALLBACK(int) serialRZConstruct(PPDMDEVINS pDevIns)
     int rc = PDMDevHlpSetDeviceCritSect(pDevIns, PDMDevHlpCritSectGetNop(pDevIns));
     AssertRCReturn(rc, rc);
 
-    rc = PDMDevHlpIoPortSetUpContext(pDevIns, pThis->hIoPorts, serialIoPortWrite, serialIoPortRead, NULL /*pvUser*/);
-    AssertRCReturn(rc, rc);
+    if (pThis->hIoPorts != NIL_IOMIOPORTHANDLE)
+    {
+        rc = PDMDevHlpIoPortSetUpContext(pDevIns, pThis->hIoPorts, serialIoPortWrite, serialIoPortRead, NULL /*pvUser*/);
+        AssertRCReturn(rc, rc);
+    }
+
+    if (pThis->hMmio != NIL_IOMMMIOHANDLE)
+    {
+        rc = PDMDevHlpMmioSetUpContext(pDevIns, pThis->hMmio, serialMmioWrite, serialMmioRead, NULL /*pvUser*/);
+        AssertRCReturn(rc, rc);
+    }
 
     rc = uartRZInit(&pThisCC->UartCore, serialIrqReq);
     AssertRCReturn(rc, rc);
