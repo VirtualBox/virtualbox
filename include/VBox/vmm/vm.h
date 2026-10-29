@@ -1662,7 +1662,7 @@ typedef struct VM
 # ifdef VMM_INCLUDED_SRC_include_GICInternal_h
             struct GIC  s;
 # endif
-            uint8_t     padding[4360];   /* multiple of 8 */
+            uint8_t     padding[4416];   /* multiple of 8 */
         } gic;
 #endif
 #if defined(VBOX_VMM_TARGET_X86) || defined(VBOX_VMM_TARGET_AGNOSTIC)
@@ -1675,7 +1675,7 @@ typedef struct VM
 # elif defined(VMM_INCLUDED_SRC_include_APICKvmInternal_h)
             struct KVMAPIC s;
 # endif
-            uint8_t     padding[4360];   /* multiple of 8 */
+            uint8_t     padding[4416];   /* multiple of 8 */
         } apic;
 #endif
 #if defined(VBOX_VMM_TARGET_RISCV) || defined(VBOX_VMM_TARGET_AGNOSTIC)
@@ -1684,7 +1684,7 @@ typedef struct VM
 # ifdef VMM_INCLUDED_SRC_include_AIAInternal_h
             struct AIA  s;
 # endif
-            uint8_t     padding[4360];   /* multiple of 8 */
+            uint8_t     padding[4416];   /* multiple of 8 */
         } aia;
 
         union
@@ -1692,7 +1692,7 @@ typedef struct VM
 # ifdef VMM_INCLUDED_SRC_include_PLICInternal_h
             struct PLIC s;
 # endif
-            uint8_t     padding[4360];   /* multiple of 8 */
+            uint8_t     padding[4416];   /* multiple of 8 */
         } plic;
 #endif
     };
@@ -1749,7 +1749,7 @@ typedef struct VM
     } gcm;
 
     /** Padding for aligning the structure size on a page boundrary. */
-    uint8_t         abAlignment2[0x2878 - sizeof(PVMCPUR3) * VMM_MAX_CPU_COUNT];
+    uint8_t         abAlignment2[0x2840 - sizeof(PVMCPUR3) * VMM_MAX_CPU_COUNT];
 
     /* ---- end small stuff ---- */
 

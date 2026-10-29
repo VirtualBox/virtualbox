@@ -30,7 +30,6 @@
 *   Header Files                                                                                                                 *
 *********************************************************************************************************************************/
 #define LOG_GROUP LOG_GROUP_CPUM
-#define VBOX_VMM_TARGET_X86
 #define CPUM_WITH_NONCONST_HOST_FEATURES
 #include <VBox/vmm/cpum.h>
 #include <VBox/vmm/hm.h>

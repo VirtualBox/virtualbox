@@ -180,9 +180,9 @@ struc VM
     .gim                    resb 448
     alignb 64
 %ifdef VBOX_VMM_TARGET_ARMV8
-    .gic                    resb 320
+    .gic                    resb 4416
 %else
-    .apic                   resb 320
+    .apic                   resb 4416
 %endif
     alignb 64
     .vm                     resb 32

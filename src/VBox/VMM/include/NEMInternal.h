@@ -229,7 +229,7 @@ typedef struct NEM
 # ifdef RT_ARCH_ARM64
     /** KVM_CAP_ARM_VM_IPA_SIZE. */
     uint32_t                    cIpaBits;
-# elif defined(RT_ARCH_X86)
+# elif defined(RT_ARCH_AMD64)
     /** KVM_CAP_X86_ROBUST_SINGLESTEP. */
     bool                        fRobustSingleStep;
     /** KVM_CAP_SPLIT_IRQCHIP */
