@@ -111,7 +111,8 @@ endstruc
 %define VMX_RESTORE_HOST_GDT_READ_ONLY                          0080h   ;RT_BIT(7)
 %define VMX_RESTORE_HOST_GDT_NEED_WRITABLE                      0100h   ;RT_BIT(8)
 %define VMX_RESTORE_HOST_CAN_USE_WRFSBASE_AND_WRGSBASE          0200h   ;RT_BIT(9)
-%define VMX_RESTORE_HOST_REQUIRED                               0400h   ;RT_BIT(10) - must be the highest bit!
+%define VMX_RESTORE_HOST_CET_ENABLED                            0400h   ;RT_BIT(10)
+%define VMX_RESTORE_HOST_REQUIRED                               0800h   ;RT_BIT(11) - must be the highest bit!
 struc VMXRESTOREHOST
     .uHostSelDS                     resw    1
     .uHostSelES                     resw    1
