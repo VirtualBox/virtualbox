@@ -724,7 +724,10 @@ int vbsf_inode_revalidate_with_handle(struct dentry *dentry, SHFLHANDLE hHostFil
    has inode at all) from these new attributes we derive [kstat] via
    [generic_fillattr] */
 #if RTLNX_VER_MIN(2,5,18)
-# if RTLNX_VER_MIN(6,3,0) || RTLNX_RHEL_RANGE(9,6, 9,99)
+# if RTLNX_VER_MIN(7,4,0)
+int vbsf_inode_getattr(const struct mnt_idmap *idmap, const struct path *path,
+                       struct kstat *kstat, u32 request_mask, unsigned int flags)
+# elif RTLNX_VER_MIN(6,3,0) || RTLNX_RHEL_RANGE(9,6, 9,99)
 int vbsf_inode_getattr(struct mnt_idmap *idmap, const struct path *path,
                        struct kstat *kstat, u32 request_mask, unsigned int flags)
 # elif RTLNX_VER_MIN(5,12,0)
@@ -824,7 +827,9 @@ int vbsf_inode_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat
 /**
  * Modify inode attributes.
  */
-#if RTLNX_VER_MIN(6,3,0) || RTLNX_RHEL_RANGE(9,6, 9,99)
+#if RTLNX_VER_MIN(7,4,0)
+int vbsf_inode_setattr(const struct mnt_idmap *idmap, struct dentry *dentry, struct iattr *iattr)
+#elif RTLNX_VER_MIN(6,3,0) || RTLNX_RHEL_RANGE(9,6, 9,99)
 int vbsf_inode_setattr(struct mnt_idmap *idmap, struct dentry *dentry, struct iattr *iattr)
 #elif RTLNX_VER_MIN(5,12,0)
 int vbsf_inode_setattr(struct user_namespace *ns, struct dentry *dentry, struct iattr *iattr)

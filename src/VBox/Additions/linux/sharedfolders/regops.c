@@ -610,8 +610,8 @@ DECLINLINE(bool) mapping_writably_mapped(struct address_space const *mapping)
 #endif
 
 
-#if RTLNX_VER_MAX(2,5,12)
-/** Missing in 2.4.x, so just stub it for now. */
+#if RTLNX_VER_MAX(2,5,12) || RTLNX_VER_MIN(7,4,0)
+/** Missing in 2.4.x and 7.4+, so just stub it for now. */
 DECLINLINE(bool) PageWriteback(struct page const *page)
 {
     return false;
