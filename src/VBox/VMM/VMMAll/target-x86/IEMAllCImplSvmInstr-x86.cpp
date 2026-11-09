@@ -716,11 +716,13 @@ static VBOXSTRICTRC iemSvmVmrun(PVMCPUCC pVCpu, uint8_t cbInstr, RTGCPHYS GCPhys
          * SS.DPL is apparently the CPU's CPL, see comment in CPUMGetGuestCPL().
          * We shall thus adjust both CS.DPL and SS.DPL here.
          */
-        pVCpu->cpum.GstCtx.cs.Attr.n.u2Dpl = pVCpu->cpum.GstCtx.ss.Attr.n.u2Dpl = pVmcbNstGst->u8CPL;
-        if (CPUMIsGuestInV86ModeEx(IEM_GET_CTX(pVCpu)))
-            pVCpu->cpum.GstCtx.cs.Attr.n.u2Dpl = pVCpu->cpum.GstCtx.ss.Attr.n.u2Dpl = 3;
-        if (CPUMIsGuestInRealModeEx(IEM_GET_CTX(pVCpu)))
-            pVCpu->cpum.GstCtx.cs.Attr.n.u2Dpl = pVCpu->cpum.GstCtx.ss.Attr.n.u2Dpl = 0;
+        uint8_t uNstGstCpl = pVmcbNstGst->u8CPL & 0x3;
+        if (!(pVmcbNstGst->u64CR0 & X86_CR0_PE))
+            uNstGstCpl = 0;
+        else if (pVmcbNstGst->u64RFlags & X86_EFL_VM)
+            uNstGstCpl = 3;
+        pVCpu->cpum.GstCtx.cs.Attr.n.u2Dpl = pVCpu->cpum.GstCtx.ss.Attr.n.u2Dpl = uNstGstCpl;
+
         Assert(CPUMSELREG_ARE_HIDDEN_PARTS_VALID(pVCpu, &pVCpu->cpum.GstCtx.ss));
 
         /*
