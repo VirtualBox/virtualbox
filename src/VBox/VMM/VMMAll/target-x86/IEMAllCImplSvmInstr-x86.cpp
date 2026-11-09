@@ -617,7 +617,38 @@ static VBOXSTRICTRC iemSvmVmrun(PVMCPUCC pVCpu, uint8_t cbInstr, RTGCPHYS GCPhys
             Log(("iemSvmVmrun: CR0 reserved bits set. CR0=%#RX64 -> #VMEXIT\n", pVmcbNstGst->u64CR0));
             return iemSvmVmexit(pVCpu, SVM_EXIT_INVALID, 0 /* uExitInfo1 */, 0 /* uExitInfo2 */);
         }
-        /** @todo Implement all reserved bits/illegal combinations for CR3, CR4. */
+
+        /* CR3. */
+        if (pVmcbNstGst->u64CR3 >> pVM->cpum.ro.GuestFeatures.cMaxPhysAddrWidth)
+        {
+            Log(("iemSvmVmrun: CR3 reserved bits set. CR3=%#RX64 cMaxPhysAddrWidth=%u -> #VMEXIT\n", pVmcbNstGst->u64CR3,
+                 pVM->cpum.ro.GuestFeatures.cMaxPhysAddrWidth));
+            return iemSvmVmexit(pVCpu, SVM_EXIT_INVALID, 0 /* uExitInfo1 */, 0 /* uExitInfo2 */);
+        }
+
+        /* CR4. */
+        uint64_t const fValidCr4 = CPUMGetGuestCR4ValidMask(pVM);
+        if (pVmcbNstGst->u64CR4 & ~fValidCr4)
+        {
+            Log(("iemSvmVmrun: CR4 reserved bits set. CR4=%#RX64 fValidCr4=%#RX64 -> #VMEXIT\n", pVmcbNstGst->u64CR4,
+                 fValidCr4));
+            return iemSvmVmexit(pVCpu, SVM_EXIT_INVALID, 0 /* uExitInfo1 */, 0 /* uExitInfo2 */);
+        }
+
+         /*
+          * This is currently unreachable as CR4.CET is never valid for the guest (see above), but keep
+          * the check so it does not get lost if CET is ever exposed.
+          */
+        if (   (pVmcbNstGst->u64CR4 & X86_CR4_CET)
+            && !(pVmcbNstGst->u64CR0 & X86_CR0_WP))
+        {
+            Log(("iemSvmVmrun: CR4.CET set when CR0.WP=0. CR4=%#RX64 CR0=%#RX64 -> #VMEXIT\n", pVmcbNstGst->u64CR4,
+                 pVmcbNstGst->u64CR0));
+            return iemSvmVmexit(pVCpu, SVM_EXIT_INVALID, 0 /* uExitInfo1 */, 0 /* uExitInfo2 */);
+        }
+
+        /** @todo CR4.CET=1 && U_CET.SH_STK_EN=1 && EFLAGS.VM=1 must fail VMRUN too, once we
+         *        support CET and have the U_CET MSR. */
 
         /* DR6 and DR7. */
         if (   pVmcbNstGst->u64DR6 >> 32
@@ -685,11 +716,13 @@ static VBOXSTRICTRC iemSvmVmrun(PVMCPUCC pVCpu, uint8_t cbInstr, RTGCPHYS GCPhys
          * SS.DPL is apparently the CPU's CPL, see comment in CPUMGetGuestCPL().
          * We shall thus adjust both CS.DPL and SS.DPL here.
          */
-        pVCpu->cpum.GstCtx.cs.Attr.n.u2Dpl = pVCpu->cpum.GstCtx.ss.Attr.n.u2Dpl = pVmcbNstGst->u8CPL;
-        if (CPUMIsGuestInV86ModeEx(IEM_GET_CTX(pVCpu)))
-            pVCpu->cpum.GstCtx.cs.Attr.n.u2Dpl = pVCpu->cpum.GstCtx.ss.Attr.n.u2Dpl = 3;
-        if (CPUMIsGuestInRealModeEx(IEM_GET_CTX(pVCpu)))
-            pVCpu->cpum.GstCtx.cs.Attr.n.u2Dpl = pVCpu->cpum.GstCtx.ss.Attr.n.u2Dpl = 0;
+        uint8_t uNstGstCpl = pVmcbNstGst->u8CPL & 0x3;
+        if (!(pVmcbNstGst->u64CR0 & X86_CR0_PE))
+            uNstGstCpl = 0;
+        else if (pVmcbNstGst->u64RFlags & X86_EFL_VM)
+            uNstGstCpl = 3;
+        pVCpu->cpum.GstCtx.cs.Attr.n.u2Dpl = pVCpu->cpum.GstCtx.ss.Attr.n.u2Dpl = uNstGstCpl;
+
         Assert(CPUMSELREG_ARE_HIDDEN_PARTS_VALID(pVCpu, &pVCpu->cpum.GstCtx.ss));
 
         /*
