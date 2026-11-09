@@ -617,7 +617,15 @@ static VBOXSTRICTRC iemSvmVmrun(PVMCPUCC pVCpu, uint8_t cbInstr, RTGCPHYS GCPhys
             Log(("iemSvmVmrun: CR0 reserved bits set. CR0=%#RX64 -> #VMEXIT\n", pVmcbNstGst->u64CR0));
             return iemSvmVmexit(pVCpu, SVM_EXIT_INVALID, 0 /* uExitInfo1 */, 0 /* uExitInfo2 */);
         }
-        /** @todo Implement all reserved bits/illegal combinations for CR3, CR4. */
+        /** @todo Implement all reserved bits/illegal combinations for CR4. */
+
+        /* CR3. */
+        if (pVmcbNstGst->u64CR3 >> pVM->cpum.ro.GuestFeatures.cMaxPhysAddrWidth)
+        {
+            Log(("iemSvmVmrun: CR3 reserved bits set. CR3=%#RX64 cMaxPhysAddrWidth=%u -> #VMEXIT\n", pVmcbNstGst->u64CR3,
+                 pVM->cpum.ro.GuestFeatures.cMaxPhysAddrWidth));
+            return iemSvmVmexit(pVCpu, SVM_EXIT_INVALID, 0 /* uExitInfo1 */, 0 /* uExitInfo2 */);
+        }
 
         /* DR6 and DR7. */
         if (   pVmcbNstGst->u64DR6 >> 32
