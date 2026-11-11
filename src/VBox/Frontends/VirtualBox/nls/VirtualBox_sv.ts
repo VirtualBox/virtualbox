@@ -16193,7 +16193,7 @@
     </message>
     <message>
         <source>Path to the library that provides authentication for Remote Display (VRDP) clients</source>
-        <translation>Sökväg till biblioteket som tillhandahåller autentisering för Remote Display (VRDP)-klienter</translation>
+        <translation>Sökväg till biblioteket som tillhandahåller autentisering för fjärrskrivbordsklienter (VRDP)</translation>
     </message>
 </context>
 <context>
