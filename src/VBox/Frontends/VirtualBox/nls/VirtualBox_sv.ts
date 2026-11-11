@@ -3649,7 +3649,7 @@
     <message>
         <source>PS/2 and USB Mouse</source>
         <comment>PointingHIDType</comment>
-        <translation>PS/2 och USB-mus</translation>
+        <translation>PS/2- och USB-mus</translation>
     </message>
     <message>
         <source>USB Multi-Touch Tablet</source>
@@ -3729,17 +3729,17 @@
     <message>
         <source>Dynamically allocated storage split into files of less than 2GB</source>
         <comment>MediumVariant</comment>
-        <translation>Dynamiskt allokerad lagring delad i filer mindre än 2 GB</translation>
+        <translation>Dynamiskt allokerad lagring delad i filer på mindre än 2 GB</translation>
     </message>
     <message>
         <source>Dynamically allocated differencing storage split into files of less than 2GB</source>
         <comment>MediumVariant</comment>
-        <translation>Dynamiskt allokerad lagring (endast förändringar) delad i filer mindre än 2 GB</translation>
+        <translation>Dynamiskt allokerad lagring (endast förändringar) delad i filer på mindre än 2 GB</translation>
     </message>
     <message>
         <source>Fixed size storage split into files of less than 2GB</source>
         <comment>MediumVariant</comment>
-        <translation>Lagring med fast storlek delad i filer mindre än 2 GB</translation>
+        <translation>Lagring med fast storlek delad i filer på mindre än 2 GB</translation>
     </message>
     <message>
         <source>Dynamically allocated compressed storage</source>
@@ -4414,7 +4414,7 @@
     <message>
         <source>Video/Audio</source>
         <comment>UISettingsDefs::RecordingMode</comment>
-        <translation>Video/Ljud</translation>
+        <translation>Video/ljud</translation>
     </message>
     <message>
         <source>Video Only</source>
@@ -4588,12 +4588,12 @@
     <message>
         <source>Timed Out (Killed)</source>
         <comment>GuestSessionStatus</comment>
-        <translation>Tidsgränsen överskreds (avslutad)</translation>
+        <translation>Tidsgränsen överskreds (tvångsavslutad)</translation>
     </message>
     <message>
         <source>Timed Out (Abnormally)</source>
         <comment>GuestSessionStatus</comment>
-        <translation>Tidsgränsen överskreds (onormalt)</translation>
+        <translation>Tidsgränsen överskreds (onormalt avslut)</translation>
     </message>
     <message>
         <source>Down</source>
@@ -4628,7 +4628,7 @@
     <message>
         <source>Terminated (Signal)</source>
         <comment>ProcessStatus</comment>
-        <translation>Avslutad (signal)</translation>
+        <translation>Avslutad (av signal)</translation>
     </message>
     <message>
         <source>Terminated (Abnormally)</source>
@@ -4638,12 +4638,12 @@
     <message>
         <source>Timed Out (Killed)</source>
         <comment>ProcessStatus</comment>
-        <translation>Tidsgränsen överskreds (avslutad)</translation>
+        <translation>Tidsgränsen överskreds (tvångsavslutad)</translation>
     </message>
     <message>
         <source>Timed Out (Abnormally)</source>
         <comment>ProcessStatus</comment>
-        <translation>Tidsgränsen överskreds (onormalt)</translation>
+        <translation>Tidsgränsen överskreds (onormalt avslut)</translation>
     </message>
     <message>
         <source>Down</source>
