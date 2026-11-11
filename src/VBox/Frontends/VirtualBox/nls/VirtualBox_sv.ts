@@ -4825,7 +4825,7 @@
     </message>
     <message>
         <source>Default &amp;Machine Folder</source>
-        <translation>Standardmapp för &amp;maskin</translation>
+        <translation>Standardmapp för &amp;virtuella maskiner</translation>
     </message>
     <message>
         <source>Path to the default virtual machine folder. This folder is used, if not explicitly specified otherwise, when creating new virtual machines.</source>
