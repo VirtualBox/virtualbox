@@ -3283,7 +3283,7 @@
     <name>UICloudProfileManager</name>
     <message>
         <source>Cloud Profile Manager</source>
-        <translation>Hantera molnprofiler</translation>
+        <translation>Hanterare för molnprofiler</translation>
     </message>
     <message>
         <source>Reset</source>
@@ -3299,11 +3299,11 @@
     </message>
     <message>
         <source>Reset changes in current cloud profile details</source>
-        <translation>Nollställ ändringar i aktuella molnprofildetaljer</translation>
+        <translation>Nollställ ändringar i uppgifterna för den aktuella molnprofilen</translation>
     </message>
     <message>
         <source>Apply changes in current cloud profile details</source>
-        <translation>Tillämpa ändringar i aktuella molnprofilsdetaljer</translation>
+        <translation>Tillämpa ändringar i uppgifterna för den aktuella molnprofilen</translation>
     </message>
     <message>
         <source>Close dialog without saving</source>
@@ -3351,11 +3351,11 @@
     </message>
     <message>
         <source>Enter a name for the new profile...</source>
-        <translation>Ange ett namn för nya profilen...</translation>
+        <translation>Ange ett namn för den nya profilen...</translation>
     </message>
     <message>
         <source>Enter a name for this profile...</source>
-        <translation>Ange ett namn för denna profil...</translation>
+        <translation>Ange ett namn för den här profilen...</translation>
     </message>
     <message>
         <source>Name</source>
@@ -16006,11 +16006,11 @@
     </message>
     <message>
         <source>Select or enter a term which will be used in filtering the log text</source>
-        <translation>Välj eller ange en term som ska användas i filtrering av loggtexten</translation>
+        <translation>Välj eller ange en term som ska användas för att filtrera loggtexten</translation>
     </message>
     <message>
         <source>Add the filter term to the set of filter terms</source>
-        <translation>Lägg till filtertermen till uppsättningen av filtertermer</translation>
+        <translation>Lägg till filtertermen i listan över filtertermer</translation>
     </message>
     <message>
         <source>Showing %1/%2</source>
@@ -16022,7 +16022,7 @@
     </message>
     <message>
         <source>The type of boolean operator for filter operation</source>
-        <translation>Typ av boolesk operator för filteråtgärden</translation>
+        <translation>Vilken boolesk operator som ska användas för filtreringen</translation>
     </message>
     <message>
         <source>Show Line Numbers</source>
@@ -16054,7 +16054,7 @@
     </message>
     <message>
         <source>Reset options to application defaults</source>
-        <translation>Nollställ alternativ till programmets standardvärden</translation>
+        <translation>Nollställ alternativen till programmets standardvärden</translation>
     </message>
     <message>
         <source>Enter a search string here</source>
@@ -16138,11 +16138,11 @@
     </message>
     <message>
         <source>Select machines to show their log</source>
-        <translation>Välj maskiner för att visa deras logg</translation>
+        <translation>Välj maskiner vars loggar ska visas</translation>
     </message>
     <message>
         <source>&lt;p&gt;No log files for the machine %1 found. Press the &lt;b&gt;Reload&lt;/b&gt; button to reload the log folder &lt;nobr&gt;&lt;b&gt;%2&lt;/b&gt;&lt;/nobr&gt;.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Inga loggfiler hittades för maskinen %1. Tryck på knappen &lt;b&gt;Uppdatera&lt;/b&gt; för att läsa in loggmappen &lt;nobr&gt;&lt;b&gt;%2&lt;/b&gt; igen.&lt;/nobr&gt;&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Inga loggfiler hittades för maskinen %1. Tryck på knappen &lt;b&gt;Uppdatera&lt;/b&gt; för att läsa in loggmappen &lt;nobr&gt;&lt;b&gt;%2&lt;/b&gt;&lt;/nobr&gt; igen.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>%1 - Log Viewer</source>
@@ -16150,7 +16150,7 @@
     </message>
     <message>
         <source>Embed</source>
-        <translation>Inbädda</translation>
+        <translation>Bädda in</translation>
     </message>
     <message>
         <source>Embed to manager window</source>
