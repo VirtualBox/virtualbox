@@ -15362,7 +15362,7 @@
     </message>
     <message>
         <source>Host CPU Load</source>
-        <translation>Värdens CPU-last</translation>
+        <translation>Värdens CPU-belastning</translation>
     </message>
     <message>
         <source>User</source>
@@ -15394,7 +15394,7 @@
     </message>
     <message>
         <source>VM Name</source>
-        <translation>Namn för virtuell maskin</translation>
+        <translation>Namn på virtuell maskin</translation>
     </message>
     <message>
         <source>CPU Guest</source>
@@ -15430,11 +15430,11 @@
     </message>
     <message>
         <source>Disk Read Rate</source>
-        <translation>Diskläshastighet</translation>
+        <translation>Läshastighet för disk</translation>
     </message>
     <message>
         <source>Disk Write Rate</source>
-        <translation>Diskskrivhastighet</translation>
+        <translation>Skrivhastighet för disk</translation>
     </message>
     <message>
         <source>Disk Read Total</source>
@@ -15446,11 +15446,11 @@
     </message>
     <message>
         <source>VM Exits</source>
-        <translation>VM-avslut</translation>
+        <translation>VM-exits</translation>
     </message>
     <message>
         <source>Lists all currently active virtual machines.</source>
-        <translation>Listar alla aktuellt aktiva virtuella maskiner.</translation>
+        <translation>Visar alla virtuella maskiner som är aktiva just nu.</translation>
     </message>
     <message>
         <source>Network Transmit Rate</source>
@@ -15486,7 +15486,7 @@
     </message>
     <message>
         <source>List All Virtual Machines</source>
-        <translation>Lista alla virtuella maskiner</translation>
+        <translation>Visa alla virtuella maskiner</translation>
     </message>
     <message>
         <source>Show Cloud Virtual Machines</source>
