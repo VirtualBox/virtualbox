@@ -1890,7 +1890,7 @@
     </message>
     <message>
         <source>Create console connection to be able to use ssh/vnc clients</source>
-        <translation>Skapa konsollanslutning för att kunna använda SSH/VNC-klienter</translation>
+        <translation>Skapa konsolanslutning för att kunna använda SSH/VNC-klienter</translation>
     </message>
     <message>
         <source>&amp;Delete Connection</source>
@@ -1898,15 +1898,15 @@
     </message>
     <message>
         <source>Delete console connection to disconnect ssh/vnc clients</source>
-        <translation>Ta bort konsollanslutning för att koppla från SSH/VNC-klienter</translation>
+        <translation>Ta bort konsolanslutning för att koppla från SSH/VNC-klienter</translation>
     </message>
     <message>
         <source>&amp;Configure Console Applications</source>
-        <translation>&amp;Konfigurera konsollprogram</translation>
+        <translation>&amp;Konfigurera konsolprogram</translation>
     </message>
     <message>
         <source>Open configuration dialog to edit console application settings</source>
-        <translation>Öppna konfigurationsdialog för att redigera inställningar för konsollprogram</translation>
+        <translation>Öppna konfigurationsdialog för att redigera inställningar för konsolprogram</translation>
     </message>
     <message>
         <source>&amp;Copy Command (serial) for Unix</source>
@@ -1918,7 +1918,7 @@
     </message>
     <message>
         <source>Copy console command for serial connection</source>
-        <translation>Kopiera konsollkommando för serieanslutning</translation>
+        <translation>Kopiera konsolkommando för serieanslutning</translation>
     </message>
     <message>
         <source>&amp;Copy Command (VNC) for Unix</source>
@@ -1930,7 +1930,7 @@
     </message>
     <message>
         <source>Copy console command for VNC connection</source>
-        <translation>Kopiera konsollkommando för VNC-anslutning</translation>
+        <translation>Kopiera konsolkommando för VNC-anslutning</translation>
     </message>
     <message>
         <source>Show &amp;Log</source>
@@ -1938,7 +1938,7 @@
     </message>
     <message>
         <source>Show cloud console log</source>
-        <translation>Visa logg för molnkonsoll</translation>
+        <translation>Visa logg för molnkonsol</translation>
     </message>
     <message>
         <source>Terminate</source>
@@ -2010,15 +2010,15 @@
     </message>
     <message>
         <source>Cloud Console Manager</source>
-        <translation>Molnkonsollhanterare</translation>
+        <translation>Molnkonsolhanterare</translation>
     </message>
     <message>
         <source>Add new cloud console application</source>
-        <translation>Lägg till nytt molnkonsollprogram</translation>
+        <translation>Lägg till nytt molnkonsolprogram</translation>
     </message>
     <message>
         <source>Add Cloud Console Application</source>
-        <translation>Lägg till molnkonsollprogram</translation>
+        <translation>Lägg till molnkonsolprogram</translation>
     </message>
     <message>
         <source>&amp;Remove Application...</source>
@@ -2026,39 +2026,39 @@
     </message>
     <message>
         <source>Remove selected cloud console application</source>
-        <translation>Ta bort markerat molnkonsollprogram</translation>
+        <translation>Ta bort markerat molnkonsolprogram</translation>
     </message>
     <message>
         <source>Remove Cloud Console Application</source>
-        <translation>Ta bort molnkonsollprogram</translation>
+        <translation>Ta bort molnkonsolprogram</translation>
     </message>
     <message>
         <source>Add new cloud console profile</source>
-        <translation>Lägg till ny molnkonsollprofil</translation>
+        <translation>Lägg till ny molnkonsolprofil</translation>
     </message>
     <message>
         <source>Add Cloud Console Profile</source>
-        <translation>Lägg till molnkonsollprofil</translation>
+        <translation>Lägg till molnkonsolprofil</translation>
     </message>
     <message>
         <source>Remove selected cloud console profile</source>
-        <translation>Ta bort markerad molnkonsollprofil</translation>
+        <translation>Ta bort markerad molnkonsolprofil</translation>
     </message>
     <message>
         <source>Remove Cloud Console Profile</source>
-        <translation>Ta bort molnkonsollprofil</translation>
+        <translation>Ta bort molnkonsolprofil</translation>
     </message>
     <message>
         <source>Console &amp;Properties</source>
-        <translation>Konsollegens&amp;kaper</translation>
+        <translation>Konsol&amp;egenskaper</translation>
     </message>
     <message>
         <source>Open pane with selected cloud console properties</source>
-        <translation>Öppna panel med egenskaper för markerad molnkonsoll</translation>
+        <translation>Öppna panel med egenskaper för markerad molnkonsol</translation>
     </message>
     <message>
         <source>Open Cloud Console Properties</source>
-        <translation>Öppna egenskaper för molnkonsoll</translation>
+        <translation>Öppna egenskaper för molnkonsol</translation>
     </message>
     <message>
         <source>&amp;Resources</source>
@@ -3173,7 +3173,7 @@
     <name>UICloudConsoleManager</name>
     <message>
         <source>Cloud Console Manager</source>
-        <translation>Molnkonsollhanterare</translation>
+        <translation>Molnkonsolhanterare</translation>
     </message>
     <message>
         <source>Reset</source>
@@ -3189,11 +3189,11 @@
     </message>
     <message>
         <source>Reset changes in current cloud console details</source>
-        <translation>Nollställ detaljändringar i aktuell molnkonsoll</translation>
+        <translation>Nollställ detaljändringar i aktuell molnkonsol</translation>
     </message>
     <message>
         <source>Apply changes in current cloud console details</source>
-        <translation>Tillämpa detaljändringar i aktuell molnkonsoll</translation>
+        <translation>Tillämpa detaljändringar i aktuell molnkonsol</translation>
     </message>
     <message>
         <source>Close dialog without saving</source>
@@ -6448,7 +6448,7 @@
     </message>
     <message>
         <source>Session/Process Status</source>
-        <translation>Sessions-/processstatus</translation>
+        <translation>Status för session/process</translation>
     </message>
 </context>
 <context>
@@ -7593,7 +7593,7 @@
     </message>
     <message>
         <source>The nested paging is not currently enabled in the Acceleration section of the System page. This is needed to support nested hardware virtualization. It will be enabled automatically if you confirm your changes.</source>
-        <translation>Nested paging-funktionen är för närvarande inte aktiverad i Acceleration-sektionen för System-sidan. Detta krävs för att ge stöd för virtualisering med nästlad hårdvara. Den kommer att automatiskt aktiveras om du bekräftar dina ändringar.</translation>
+        <translation>Nästlad sidindelning är inte aktiverad i avsnittet Maskinvaruacceleration på sidan System. Den krävs för nästlad maskinvaruvirtualisering och aktiveras automatiskt när du bekräftar ändringarna.</translation>
     </message>
 </context>
 <context>
@@ -10669,11 +10669,11 @@
     </message>
     <message>
         <source>Console failure ...</source>
-        <translation>Konsollfel ...</translation>
+        <translation>Konsolfel ...</translation>
     </message>
     <message>
         <source>Failed to acquire console parameter.</source>
-        <translation>Misslyckades med att få konsollparameter.</translation>
+        <translation>Det gick inte att hämta konsolparametern.</translation>
     </message>
     <message>
         <source>Guest failure ...</source>
@@ -12235,15 +12235,15 @@
     </message>
     <message>
         <source>Creating cloud console connection ...</source>
-        <translation>Skapar anslutning till molnkonsoll ...</translation>
+        <translation>Skapar anslutning till molnkonsol ...</translation>
     </message>
     <message>
         <source>Deleting cloud console connection ...</source>
-        <translation>Tar bort anslutning till molnkonsoll ...</translation>
+        <translation>Tar bort anslutning till molnkonsol ...</translation>
     </message>
     <message>
         <source>Acquire cloud console log ...</source>
-        <translation>Hämta logg från molnkonsoll ...</translation>
+        <translation>Hämtar logg från molnkonsol ...</translation>
     </message>
     <message>
         <source>Taking snapshot ...</source>
@@ -16497,7 +16497,7 @@
     </message>
     <message>
         <source>Holds the name of the VISO medium.</source>
-        <translation>Håller namnet på detta VISO-media.</translation>
+        <translation>Anger namnet på VISO-mediet.</translation>
     </message>
     <message>
         <source>Show Hidden Objects</source>
@@ -16505,7 +16505,7 @@
     </message>
     <message>
         <source>When checked, multiple hidden objects are shown in the file browser</source>
-        <translation>När kryssad kommer flera dolda objekt att visas i filbläddraren</translation>
+        <translation>När alternativet är markerat visas flera dolda objekt i filbläddraren</translation>
     </message>
     <message>
         <source>VISO Creator</source>
@@ -16709,7 +16709,7 @@
     </message>
     <message>
         <source>Holds a name for the new virtual machine.</source>
-        <translation>Håller ett namn för den nya virtuella maskinen.</translation>
+        <translation>Anger namnet på den nya virtuella maskinen.</translation>
     </message>
     <message>
         <source>Specifies The location of the new virtual machine in host&apos;s storage.</source>
@@ -17008,7 +17008,7 @@
     </message>
     <message>
         <source>Holds the path of the file selected for export.</source>
-        <translation>Håller sökvägen för filen som valts för export.</translation>
+        <translation>Anger sökvägen till filen som valts för export.</translation>
     </message>
     <message>
         <source>Format settings</source>
@@ -17143,7 +17143,7 @@
     </message>
     <message>
         <source>Holds the path of the file selected for import.</source>
-        <translation>Håller sökvägen för filen som ska importeras.</translation>
+        <translation>Anger sökvägen till filen som ska importeras.</translation>
     </message>
     <message>
         <source>Include all network adapter MAC addresses</source>
@@ -17191,7 +17191,7 @@
     </message>
     <message>
         <source>When checked, all the hard drives that belong to this appliance will be imported in VDI format.</source>
-        <translation>När kryssad kommer alla hårddiskar som tillhör denna appliance att importeras i VDI-format.</translation>
+        <translation>När alternativet är markerat importeras alla hårddiskar i den här appliancen i VDI-format.</translation>
     </message>
     <message>
         <source>Please choose one of cloud service profiles you have registered to import virtual machine from.  Corresponding machines list will be updated.  To continue, select one of machines to import below.</source>
@@ -17215,7 +17215,7 @@
     </message>
     <message>
         <source>Holds the path to the base virtual machine folder. This folder is used when creating new virtual machine.</source>
-        <translation>Håller sökvägen till basmappen för virtuella maskiner. Denna mapp används när nya virtuella maskiner skapas.</translation>
+        <translation>Anger sökvägen till basmappen för virtuella maskiner. Den här mappen används när nya virtuella maskiner skapas.</translation>
     </message>
     <message>
         <source>&amp;Import Hard Drives as VDI</source>
