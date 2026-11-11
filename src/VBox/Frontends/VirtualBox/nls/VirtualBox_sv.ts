@@ -15280,7 +15280,7 @@
     </message>
     <message>
         <source>User name cannot be an empty string</source>
-        <translation>Användarnamnet får inte vara en tom sträng</translation>
+        <translation>Användarnamnet får inte vara tomt</translation>
     </message>
     <message>
         <source>User name is valid</source>
