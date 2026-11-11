@@ -10001,11 +10001,11 @@
     </message>
     <message>
         <source>Can&apos;t enumerate USB devices ...</source>
-        <translation>Kan inte räkna upp USB-enheter ...</translation>
+        <translation>Kan inte lista USB-enheter ...</translation>
     </message>
     <message>
         <source>Failed to enumerate host USB devices.</source>
-        <translation>Misslyckades med att räkna upp värd-USB-enheter.</translation>
+        <translation>Misslyckades med att lista värdens USB-enheter.</translation>
     </message>
     <message>
         <source>Can&apos;t open medium ...</source>
@@ -10065,7 +10065,7 @@
     </message>
     <message>
         <source>Failed to acquire Extension Pack Manager.</source>
-        <translation>Misslyckades med att få utökningspakethanterare.</translation>
+        <translation>Misslyckades med att hämta tilläggspakethanteraren.</translation>
     </message>
     <message>
         <source>Can&apos;t create VFS explorer ...</source>
@@ -10137,7 +10137,7 @@
     </message>
     <message>
         <source>Can&apos;t remove cloud network ...</source>
-        <translation>Kan inte flytta molnnätverk ...</translation>
+        <translation>Kan inte ta bort molnnätverk ...</translation>
     </message>
     <message>
         <source>Failed to remove the cloud network &lt;b&gt;%1&lt;/b&gt;.</source>
@@ -10225,7 +10225,7 @@
     </message>
     <message>
         <source>Failed to export virtual machine &lt;b&gt;%1&lt;/b&gt;.</source>
-        <translation>Misslyckades med att exportera virtuella maskinen &lt;b&gt;%1&lt;/b&gt;.</translation>
+        <translation>Misslyckades med att exportera den virtuella maskinen &lt;b&gt;%1&lt;/b&gt;.</translation>
     </message>
     <message>
         <source>Can&apos;t attach device ...</source>
@@ -10355,11 +10355,11 @@
     </message>
     <message>
         <source>Failed to acquire Extension Pack Manager parameter.</source>
-        <translation>Misslyckades med att få parameter för utökningspakethanterare.</translation>
+        <translation>Misslyckades med att hämta parametern för tilläggspakethanteraren.</translation>
     </message>
     <message>
         <source>Failed to acquire Extension Pack parameter.</source>
-        <translation>Misslyckades med att få utökningspaketparameter.</translation>
+        <translation>Misslyckades med att hämta tilläggspaketparametern.</translation>
     </message>
     <message>
         <source>Failed to acquire VSD parameter.</source>
@@ -10371,7 +10371,7 @@
     </message>
     <message>
         <source>Can&apos;t get Extension Pack Manager ...</source>
-        <translation>Kan inte få hanterare för tilläggspaket ...</translation>
+        <translation>Kan inte hämta tilläggspakethanteraren ...</translation>
     </message>
     <message>
         <source>Failed to create VSD.</source>
@@ -10391,11 +10391,11 @@
     </message>
     <message>
         <source>Failed to find snapshot with ID=&lt;b&gt;%1&lt;/b&gt;.</source>
-        <translation>Misslyckades med att hitta ögonblicksbild med id=&lt;b&gt;%1&lt;/b&gt;.</translation>
+        <translation>Misslyckades med att hitta ögonblicksbild med ID=&lt;b&gt;%1&lt;/b&gt;.</translation>
     </message>
     <message>
         <source>Failed to find snapshot with name=&lt;b&gt;%1&lt;/b&gt;.</source>
-        <translation>Misslyckades med att hitta ögonblicksbild med name=&lt;b&gt;%1&lt;/b&gt;.</translation>
+        <translation>Misslyckades med att hitta ögonblicksbild med namn=&lt;b&gt;%1&lt;/b&gt;.</translation>
     </message>
     <message>
         <source>&lt;p&gt;The machine settings were changed.&lt;/p&gt;&lt;p&gt;Would you like to discard the changed settings or to keep editing them?&lt;/p&gt;</source>
@@ -10411,7 +10411,7 @@
     </message>
     <message>
         <source>&lt;p&gt;You are going to restore default secure boot keys.&lt;/p&gt;&lt;p&gt;If you proceed your current keys will be rewritten. You may not be able to boot affected VM anymore.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Du är på väg att återställa standardnycklarna för secure boot.&lt;/p&gt;&lt;p&gt;Om du fortsätter kommer dina aktuella nycklar skrivas över. Du kanske inte kommer kunna starta upp påverkade virtuella maskiner längre.&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Du är på väg att återställa standardnycklarna för säker start.&lt;/p&gt;&lt;p&gt;Om du fortsätter skrivs dina aktuella nycklar över. Du kan kanske inte längre starta de berörda virtuella maskinerna.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>Reinstall</source>
@@ -10420,7 +10420,7 @@
     </message>
     <message>
         <source>Remove extension pack?</source>
-        <translation>Ta bort utökningspaketet?</translation>
+        <translation>Ta bort tilläggspaketet?</translation>
     </message>
     <message>
         <source>Remove</source>
