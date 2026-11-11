@@ -7268,7 +7268,7 @@
     </message>
     <message>
         <source>Author(s):</source>
-        <translation>Upphovsperson(er):</translation>
+        <translation>Översättare:</translation>
     </message>
     <message>
         <source>Available user interface languages. The effective language is written in bold. Select Default to reset to the system default language.</source>
