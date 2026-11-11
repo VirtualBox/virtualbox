@@ -14508,7 +14508,7 @@
     <name>UIToolsItem</name>
     <message>
         <source>Tool item</source>
-        <translation>Verktygsobjekt</translation>
+        <translation>Verktygspost</translation>
     </message>
     <message>
         <source>Welcome</source>
@@ -14516,7 +14516,7 @@
     </message>
     <message>
         <source>Media</source>
-        <translation>Media</translation>
+        <translation>Medier</translation>
     </message>
     <message>
         <source>Network</source>
@@ -14560,7 +14560,7 @@
     </message>
     <message>
         <source>Home</source>
-        <translation>Hem</translation>
+        <translation>Startsida</translation>
     </message>
     <message>
         <source>Machines</source>
