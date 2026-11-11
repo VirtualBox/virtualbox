@@ -7600,7 +7600,7 @@
     <name>UIMachineView</name>
     <message>
         <source>Holds the graphical canvas containing guest screen contents.</source>
-        <translation>Visar den grafiska ytan med gästskärmens innehåll.</translation>
+        <translation>Innehåller den grafiska ytan med gästskärmens innehåll.</translation>
     </message>
 </context>
 <context>
