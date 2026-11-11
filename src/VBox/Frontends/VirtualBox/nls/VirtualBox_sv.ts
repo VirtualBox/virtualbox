@@ -2469,8 +2469,8 @@
         <source>This virtual machine is password protected. Please enter the %n encryption password(s) below.</source>
         <comment>This text is never used with n == 0. Feel free to drop the %n where possible, we only included it because of problems with Qt Linguist (but the user can see how many passwords are in the list and doesn&apos;t need to be told).</comment>
         <translation>
-            <numerusform>Denna virtuell maskin är lösenordsskyddad. Ange %n krypteringslösenord nedan.</numerusform>
-            <numerusform>Denna virtuell maskin är lösenordsskyddad. Ange %n krypteringslösenord nedan.</numerusform>
+            <numerusform>Den här virtuella maskinen är lösenordsskyddad. Ange %n krypteringslösenord nedan.</numerusform>
+            <numerusform>Den här virtuella maskinen är lösenordsskyddad. Ange %n krypteringslösenord nedan.</numerusform>
         </translation>
     </message>
 </context>
@@ -3018,7 +3018,7 @@
     </message>
     <message>
         <source>&amp;Boot Device Order (BIOS only)</source>
-        <translation>U&amp;ppstartsordning för enhet (endast BIOS)</translation>
+        <translation>U&amp;ppstartsordning för enheter (endast BIOS)</translation>
     </message>
     <message>
         <source>VM will attempt to boot from checked devices, in order. Note: only supported for BIOS firmware type, i.e. when below UEFI option is off.</source>
@@ -11039,7 +11039,7 @@
     </message>
     <message>
         <source>Emulated RTC device reports time in UTC rather than local time on the host</source>
-        <translation>Emulerad RTC-enhet rapporterar tiden i UTC istället för lokal tid på värden</translation>
+        <translation>Emulerad RTC-enhet rapporterar tiden i UTC i stället för lokal tid på värden</translation>
     </message>
     <message>
         <source>U&amp;EFI</source>
@@ -12492,7 +12492,7 @@
     </message>
     <message>
         <source>Use the Physical Address Extension (PAE) feature of the host CPU on the virtual machine</source>
-        <translation>Använd funktionen Physical Address Extension (PAE) på värd-CPU:n på den virtuella maskinen</translation>
+        <translation>Använd värd-CPU:ns funktion Physical Address Extension (PAE) i den virtuella maskinen</translation>
     </message>
     <message>
         <source>Nested &amp;VT-x/AMD-V</source>
@@ -12500,7 +12500,7 @@
     </message>
     <message>
         <source>Use the nested hardware virtualization CPU feature on the virtual machine</source>
-        <translation>Använd den nästlade CPU-funktionen för hårdvaruvirtualisering på den virtuella maskinen</translation>
+        <translation>Använd den nästlade hårdvaruvirtualiseringsfunktionen för processorn i den virtuella maskinen</translation>
     </message>
 </context>
 <context>
@@ -14598,7 +14598,7 @@
     </message>
     <message>
         <source>Emulate this Trusted Platform Module on this VM</source>
-        <translation>Emulera denna Trusted Platform Module på denna VM</translation>
+        <translation>Emulera denna Trusted Platform Module på den här virtuella maskinen.</translation>
     </message>
 </context>
 <context>
