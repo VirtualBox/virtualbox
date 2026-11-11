@@ -7080,7 +7080,7 @@
     <message>
         <source>Pointer is not captured</source>
         <comment>Mouse tooltip</comment>
-        <translation>Muspekare är inte fångad</translation>
+        <translation>Muspekaren är inte fångad</translation>
     </message>
     <message>
         <source>Pointer is captured</source>
@@ -7105,7 +7105,7 @@
     <message>
         <source>Note that the mouse integration feature requires Guest Additions to be installed in the guest OS.</source>
         <comment>Mouse tooltip</comment>
-        <translation>Observera att musintegrationsfunktion kräver att Gästtillägg installeras i gästoperativsystemet.</translation>
+        <translation>Observera att funktionen för musintegration kräver att Gästtillägg är installerade i gästoperativsystemet.</translation>
     </message>
 </context>
 <context>
