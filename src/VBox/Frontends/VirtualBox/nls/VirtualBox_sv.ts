@@ -3319,7 +3319,7 @@
     </message>
     <message>
         <source>Close Window (%1)</source>
-        <translation>Stäng fönster (%1)</translation>
+        <translation>Stäng fönstret (%1)</translation>
     </message>
     <message>
         <source>Add Profile</source>
@@ -11757,7 +11757,7 @@
     </message>
     <message>
         <source>Adapter</source>
-        <translation>Adapter</translation>
+        <translation>Nätverkskort</translation>
     </message>
     <message>
         <source>Automatically configured</source>
@@ -11793,7 +11793,7 @@
     </message>
     <message>
         <source>IPv6 Prefix Length</source>
-        <translation>Längd för IPv6-prefix</translation>
+        <translation>IPv6-prefixlängd</translation>
     </message>
     <message>
         <source>Not set</source>
@@ -11816,7 +11816,7 @@
     </message>
     <message>
         <source>Network Mask</source>
-        <translation>Nätverksmask</translation>
+        <translation>Nätmask</translation>
     </message>
     <message>
         <source>Not set</source>
