@@ -7063,11 +7063,11 @@
     <name>UIIndicatorKeyboardExtension</name>
     <message>
         <source>Shows the currently assigned Host Key Combo.&lt;br&gt;This key combo, when pressed alone, toggles the keyboard and mouse capture state. It can also be used in combination with other keys to quickly perform actions from the main menu.</source>
-        <translation>Visar den aktuellt tilldelade kombinationen för värdtangent.&lt;br&gt;Denna tangentkombination, när tryckt ensamt, växlar fångsttillståndet för tangentbord och mus. Den kan också användas i kombination med andra tangenter för att snabbt genomföra åtgärder från huvudmenyn.</translation>
+        <translation>Visar den aktuellt tilldelade värdtangentkombinationen.&lt;br&gt;När du trycker enbart på tangentkombinationen växlar den mellan att fånga och släppa tangentbordet och musen. Den kan också användas tillsammans med andra tangenter för att snabbt utföra åtgärder från huvudmenyn.</translation>
     </message>
     <message>
         <source>Host Key Combo: %1</source>
-        <translation>Kombination för värdtangent: %1</translation>
+        <translation>Värdtangentkombination: %1</translation>
     </message>
 </context>
 <context>
