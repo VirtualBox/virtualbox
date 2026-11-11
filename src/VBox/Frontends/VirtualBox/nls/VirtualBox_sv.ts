@@ -2971,7 +2971,7 @@
     </message>
     <message>
         <source>The virtual machine failed to boot. That might be caused by a missing operating system or misconfigured boot order. Mounting an operating system install DVD might solve this problem. Selecting an ISO file will attempt to mount it after the dialog is closed.</source>
-        <translation>Den virtuella maskinen kunde inte starta. Det kan bero på att ett operativsystem saknas eller att uppstartsordningen är felaktig. Problemet kan lösas genom att montera en DVD med ett operativsystem. Om du väljer en ISO-fil försöker VirtualBox montera den när dialogrutan stängs.</translation>
+        <translation>Den virtuella maskinen kunde inte starta. Det kan bero på att ett operativsystem saknas eller att uppstartsordningen är felaktig. Problemet kan lösas genom att montera en installations-DVD för ett operativsystem. Om du väljer en ISO-fil försöker VirtualBox montera den när dialogrutan stängs.</translation>
     </message>
     <message>
         <source>DVD:</source>
