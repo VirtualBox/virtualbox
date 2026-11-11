@@ -13105,7 +13105,7 @@
     <message>
         <source>%1 status-bar indicator</source>
         <comment>like &apos;hard-disk status-bar indicator&apos;</comment>
-        <translation>%1-statusradsindikator</translation>
+        <translation>%1-indikator på statusraden</translation>
     </message>
 </context>
 <context>
@@ -13113,18 +13113,18 @@
     <message>
         <source>%1 status-bar indicator</source>
         <comment>like &apos;hard-disk status-bar indicator&apos;</comment>
-        <translation>%1-statusradsindikator</translation>
+        <translation>%1-indikator på statusraden</translation>
     </message>
 </context>
 <context>
     <name>UISettingsPageValidator</name>
     <message>
         <source>&lt;b&gt;%1&lt;/b&gt; page:</source>
-        <translation>&lt;b&gt;%1&lt;/b&gt; sida:</translation>
+        <translation>Sidan &lt;b&gt;%1&lt;/b&gt;:</translation>
     </message>
     <message>
         <source>&lt;b&gt;%1: %2&lt;/b&gt; page:</source>
-        <translation>&lt;b&gt;%1: %2&lt;/b&gt; sida:</translation>
+        <translation>Sidan &lt;b&gt;%1: %2&lt;/b&gt;:</translation>
     </message>
 </context>
 <context>
