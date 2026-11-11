@@ -8305,7 +8305,7 @@
     </message>
     <message>
         <source>&lt;p&gt;Failed to initialize COM or to find the VirtualBox COM server. Most likely, the VirtualBox server is not running or failed to start.&lt;/p&gt;&lt;p&gt;The application will now terminate.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Misslyckades med att initiera COM eller att hitta VirtualBox COM-server. Antagligen kör inte VirtualBox-servern eller misslyckades med att starta.&lt;/p&gt;&lt;p&gt;Programmet kommer nu att avslutas.&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Det gick inte att initiera COM eller hitta VirtualBox COM-servern. VirtualBox-servern körs troligen inte eller kunde inte starta.&lt;/p&gt;&lt;p&gt;Programmet avslutas nu.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>Failed to set global VirtualBox properties.</source>
@@ -8357,7 +8357,7 @@
     </message>
     <message>
         <source>&lt;p&gt;The Virtual Machine reports that the guest OS does not support &lt;b&gt;mouse pointer integration&lt;/b&gt; in the current video mode. You need to capture the mouse (by clicking over the VM display or pressing the host key) in order to use the mouse inside the guest OS.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Den virtuella maskinen rapporterar att gästoperativsystemet inte har stöd för &lt;b&gt;muspekarintegration&lt;/b&gt; i det aktulla grafikläget. Du behöver fånga musen (genom att klicka i den virtuella maskinen eller genom att trycka på värdtangenten) för att använda musen inne i gästoperativsystemet.&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Den virtuella maskinen rapporterar att gästoperativsystemet inte har stöd för &lt;b&gt;muspekarintegration&lt;/b&gt; i det aktuella grafikläget. Du behöver fånga musen genom att klicka i den virtuella maskinens fönster eller trycka på värdtangenten för att använda musen i gästoperativsystemet.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&lt;p&gt;The Virtual Machine is currently in the &lt;b&gt;Paused&lt;/b&gt; state and not able to see any keyboard or mouse input. If you want to continue to work inside the VM, you need to resume it by selecting the corresponding action from the menu bar.&lt;/p&gt;</source>
@@ -8380,7 +8380,7 @@
     </message>
     <message>
         <source>&lt;p&gt;A fatal error has occurred during virtual machine execution! The virtual machine will be powered off. Please copy the following error message using the clipboard to help diagnose the problem:&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Ett ödesdigert fel har inträffat under körning av den virtuella maskinen! Den virtuella maskinen kommer att stängas av. Det föreslås att använda urklippet för att kopiera följande felmeddelande för senare undersökning av problemet:&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Ett allvarligt fel har inträffat under körning av den virtuella maskinen! Den virtuella maskinen stängs av. Kopiera följande felmeddelande till urklippet för att underlätta felsökning:&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&lt;p&gt;An error has occurred during virtual machine execution! The error details are shown below. You may try to correct the error and resume the virtual machine execution.&lt;/p&gt;</source>
@@ -8424,7 +8424,7 @@
     </message>
     <message>
         <source>You are already running the most recent version of VirtualBox.</source>
-        <translation>Du har redan installerat den senaste versionen av VirtualBox. Upprepa versionskontrollen igen senare.</translation>
+        <translation>Du kör redan den senaste versionen av VirtualBox.</translation>
     </message>
     <message>
         <source>&lt;p&gt;The Virtual Machine reports that the guest OS supports &lt;b&gt;mouse pointer integration&lt;/b&gt;. This means that you do not need to &lt;i&gt;capture&lt;/i&gt; the mouse pointer to be able to use it in your guest OS -- all mouse actions you perform when the mouse pointer is over the Virtual Machine&apos;s display are directly sent to the guest OS. If the mouse is currently captured, it will be automatically uncaptured.&lt;/p&gt;&lt;p&gt;The mouse icon on the status bar will look like&amp;nbsp;&lt;img src=:/mouse_seamless_16px.png/&gt;&amp;nbsp;to inform you that mouse pointer integration is supported by the guest OS and is currently turned on.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Note&lt;/b&gt;: Some applications may behave incorrectly in mouse pointer integration mode. You can always disable it for the current session (and enable it again) by selecting the corresponding action from the menu bar.&lt;/p&gt;</source>
@@ -8432,7 +8432,7 @@
     </message>
     <message>
         <source>&lt;p&gt;A new version of VirtualBox has been released! Version &lt;b&gt;%1&lt;/b&gt; is available at &lt;a href=&quot;https://www.virtualbox.org/&quot;&gt;virtualbox.org&lt;/a&gt;.&lt;/p&gt;&lt;p&gt;You can download this version using the link:&lt;/p&gt;&lt;p&gt;&lt;a href=%2&gt;%3&lt;/a&gt;&lt;/p&gt;</source>
-        <translation>&lt;p&gt;En ny version av VirtualBox har släppts! Version &lt;b&gt;%1&lt;/b&gt; finns tillgänglig på &lt;a href=&quot;https://www.virtualbox.org/&quot;&gt;virtualbox.org&lt;/a&gt;.&lt;/p&gt;&lt;p&gt;Du kan hämta ner denna version från denna direktlänk:&lt;/p&gt;&lt;p&gt;&lt;a href=%2&gt;%3&lt;/a&gt;&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;En ny version av VirtualBox har släppts! Version &lt;b&gt;%1&lt;/b&gt; finns tillgänglig på &lt;a href=&quot;https://www.virtualbox.org/&quot;&gt;virtualbox.org&lt;/a&gt;.&lt;/p&gt;&lt;p&gt;Du kan hämta versionen via följande länk:&lt;/p&gt;&lt;p&gt;&lt;a href=%2&gt;%3&lt;/a&gt;&lt;/p&gt;</translation>
     </message>
     <message>
         <source>Release</source>
@@ -8461,11 +8461,11 @@
     </message>
     <message>
         <source>Look for extension pack?</source>
-        <translation>Söka efter utökningspaket?</translation>
+        <translation>Söka efter tilläggspaket?</translation>
     </message>
     <message>
         <source>Download extension pack?</source>
-        <translation>Hämta utökningspaket?</translation>
+        <translation>Hämta tilläggspaket?</translation>
     </message>
     <message>
         <source>Download</source>
@@ -8474,11 +8474,11 @@
     </message>
     <message>
         <source>Delete extension pack file?</source>
-        <translation>Ta bort utökningspaketfilen?</translation>
+        <translation>Ta bort tilläggspaketfilen?</translation>
     </message>
     <message>
         <source>Delete extension pack files?</source>
-        <translation>Ta bort utökningspaketfilerna?</translation>
+        <translation>Ta bort tilläggspaketfilerna?</translation>
     </message>
     <message>
         <source>Export VM in saved-state?</source>
@@ -8502,11 +8502,11 @@
     </message>
     <message>
         <source>The following files already exist:&lt;br /&gt;&lt;br /&gt;%1&lt;br /&gt;&lt;br /&gt;Are you sure you want to replace them? Replacing them will overwrite their contents.</source>
-        <translation>Följande filer finns redan:&lt;br /&gt;&lt;br /&gt;%1&lt;br /&gt;&lt;br /&gt;Är du säker på att du vill ersätta dem? Ersätts dem så kommer deras innehåll att skrivas över.</translation>
+        <translation>Följande filer finns redan:&lt;br /&gt;&lt;br /&gt;%1&lt;br /&gt;&lt;br /&gt;Är du säker på att du vill ersätta dem? Om du ersätter dem skrivs deras innehåll över.</translation>
     </message>
     <message>
         <source>You are running a prerelease version of VirtualBox. This version is not suitable for production use.</source>
-        <translation>Du kör en betautgåva av VirtualBox. Denna version är inte lämplig att använda i produktionsmiljöer.</translation>
+        <translation>Du kör en förhandsutgåva av VirtualBox. Den här versionen är inte lämplig för produktionsmiljöer.</translation>
     </message>
     <message>
         <source>You are trying to shut down the guest with the ACPI power button. This is currently not possible because the guest does not support software shutdown.</source>
@@ -8542,7 +8542,7 @@
     </message>
     <message>
         <source>You are running an EXPERIMENTAL build of VirtualBox. This version is not suitable for production use.</source>
-        <translation>Du kör en EXPERIMENTELL byggnation av VirtualBox. Denna version är inte lämplig för produktionsmiljöer.</translation>
+        <translation>Du kör en EXPERIMENTELL testversion av VirtualBox. Den här versionen är inte lämplig för produktionsmiljöer.</translation>
     </message>
     <message>
         <source>Restore</source>
