@@ -13429,7 +13429,7 @@
     <name>UIShortcutConfigurationEditor</name>
     <message>
         <source>&amp;VirtualBox Manager</source>
-        <translation>Hanterare för &amp;VirtualBox</translation>
+        <translation>&amp;VirtualBox-hanteraren</translation>
     </message>
     <message>
         <source>Virtual &amp;Machine</source>
@@ -13457,7 +13457,7 @@
     </message>
     <message>
         <source>Shortcut list filter</source>
-        <translation>Filter för genvägslista</translation>
+        <translation>Filter för genvägslistan</translation>
     </message>
 </context>
 <context>
