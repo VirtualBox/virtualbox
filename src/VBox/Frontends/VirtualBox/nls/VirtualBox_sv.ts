@@ -14598,7 +14598,7 @@
     </message>
     <message>
         <source>Emulate this Trusted Platform Module on this VM</source>
-        <translation>Emulera denna Trusted Platform Module på den här virtuella maskinen.</translation>
+        <translation>Emulera denna betrodda plattformsmodul i den virtuella maskinen.</translation>
     </message>
 </context>
 <context>
