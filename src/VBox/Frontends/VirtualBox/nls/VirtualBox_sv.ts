@@ -5388,11 +5388,11 @@
     </message>
     <message>
         <source>Copy value (%1)</source>
-        <translation>Kopiera värde (%1)</translation>
+        <translation>Kopiera värdet (%1)</translation>
     </message>
     <message>
         <source>Edit value...</source>
-        <translation>Redigera värde...</translation>
+        <translation>Redigera värdet...</translation>
     </message>
 </context>
 <context>
