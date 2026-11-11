@@ -10508,7 +10508,7 @@
     </message>
     <message>
         <source>Remove host-only network interface?</source>
-        <translation>Ta bort det värdbaserade nätverksgränssnittet?</translation>
+        <translation>Ta bort endast-värd-nätverksgränssnittet?</translation>
     </message>
     <message>
         <source>Remove</source>
@@ -10517,7 +10517,7 @@
     </message>
     <message>
         <source>Remove host-only network?</source>
-        <translation>Ta bort det värdbaserade nätverket?</translation>
+        <translation>Ta bort endast-värd-nätverket?</translation>
     </message>
     <message>
         <source>Remove NAT network?</source>
@@ -10569,7 +10569,7 @@
     </message>
     <message>
         <source>&lt;p&gt;The &lt;b&gt;VirtualBox Guest Additions&lt;/b&gt; disk image file has been successfully downloaded from &lt;nobr&gt;&lt;a href=&quot;%1&quot;&gt;%1&lt;/a&gt;&lt;/nobr&gt; and saved locally as &lt;nobr&gt;&lt;b&gt;%2&lt;/b&gt;.&lt;/nobr&gt;&lt;/p&gt;&lt;p&gt;Do you wish to continue with Guest Additions installation?&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Diskavbildningsfilen för &lt;b&gt;VirtualBox gästtillägg&lt;/b&gt; har hämtats ner från &lt;nobr&gt;&lt;a href=&quot;%1&quot;&gt;%1&lt;/a&gt;&lt;/nobr&gt; och sparats lokalt som &lt;nobr&gt;&lt;b&gt;%2&lt;/b&gt;.&lt;/nobr&gt;&lt;/p&gt;&lt;p&gt;Vill du fortsätta med installationen av gästtillägg?&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Diskavbildningsfilen för &lt;b&gt;VirtualBox gästtillägg&lt;/b&gt; har hämtats från &lt;nobr&gt;&lt;a href=&quot;%1&quot;&gt;%1&lt;/a&gt;&lt;/nobr&gt; och sparats lokalt som &lt;nobr&gt;&lt;b&gt;%2&lt;/b&gt;.&lt;/nobr&gt;&lt;/p&gt;&lt;p&gt;Vill du fortsätta med installationen av gästtillägg?&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&lt;p&gt;Could not find the &lt;b&gt;VirtualBox User Guide&lt;/b&gt; &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;.&lt;/nobr&gt;&lt;/p&gt;&lt;p&gt;Do you wish to download this file from the Internet?&lt;/p&gt;</source>
@@ -10585,11 +10585,11 @@
     </message>
     <message>
         <source>VirtualBox is not currently allowed to access USB devices.  You can change this by adding your user to the &apos;vboxusers&apos; group.  Please see the user guide for a more detailed explanation</source>
-        <translation>VirtualBox tillåts inte för närvarande att komma åt USB-enheter.  Du kan ändra detta genom att lägga till din användare till gruppen &apos;vboxusers&apos;.  Se användarguiden för en mer detaljerad förklaring</translation>
+        <translation>VirtualBox har för närvarande inte åtkomst till USB-enheter. Du kan ändra detta genom att lägga till din användare i gruppen &apos;vboxusers&apos;. Se användarhandboken för en mer detaljerad förklaring.</translation>
     </message>
     <message>
         <source>VirtualBox is not currently allowed to access USB devices.  You can change this by allowing your user to access the &apos;usbfs&apos; folder and files.  Please see the user guide for a more detailed explanation</source>
-        <translation>VirtualBox tillåts inte för närvarande att komma åt USB-enheter.  Du kan ändra detta genom att tillåta att din användare kommer åt &apos;usbfs&apos; mappar och filer.  Se användarguiden för en mer detaljerad förklaring</translation>
+        <translation>VirtualBox har för närvarande inte åtkomst till USB-enheter. Du kan ändra detta genom att ge din användare åtkomst till mappen och filerna i &apos;usbfs&apos;. Se användarhandboken för en mer detaljerad förklaring.</translation>
     </message>
     <message>
         <source>User guide downloaded ...</source>
@@ -10625,7 +10625,7 @@
     </message>
     <message>
         <source>Storage controller failure ...</source>
-        <translation>Fel i lagringsstyrkort ...</translation>
+        <translation>Lagringsstyrkortsfel ...</translation>
     </message>
     <message>
         <source>Failed to acquire storage controller parameter.</source>
@@ -10649,7 +10649,7 @@
     </message>
     <message>
         <source>Failed to acquire graphics adapter parameter.</source>
-        <translation>Misslyckades med att få parameter för grafikkort.</translation>
+        <translation>Misslyckades med att hämta parametern för grafikkontrollern.</translation>
     </message>
     <message>
         <source>Audio settings failure ...</source>
@@ -10765,7 +10765,7 @@
     </message>
     <message>
         <source>Failed to reset the virtual machine &lt;b&gt;%1&lt;/b&gt;.</source>
-        <translation>Misslyckades med att starta om virtuella maskinen &lt;b&gt;%1&lt;/b&gt;.</translation>
+        <translation>Misslyckades med att starta om den virtuella maskinen &lt;b&gt;%1&lt;/b&gt;.</translation>
     </message>
     <message>
         <source>Continue</source>
@@ -10798,7 +10798,7 @@
     </message>
     <message>
         <source>Shared clipboard error ...</source>
-        <translation>Fel i delade urklipp ...</translation>
+        <translation>Fel i det delade urklippet ...</translation>
     </message>
     <message>
         <source>&lt;p&gt;You have the &lt;b&gt;Auto capture keyboard&lt;/b&gt; option turned on. This will cause the Virtual Machine to automatically &lt;b&gt;capture&lt;/b&gt; the keyboard every time the VM window is activated and make it unavailable to other applications running on your host machine: when the keyboard is captured, all keystrokes (including system ones like Alt-Tab) will be directed to the VM.&lt;/p&gt;&lt;p&gt;You can press the &lt;b&gt;host key combo&lt;/b&gt; at any time to &lt;b&gt;uncapture&lt;/b&gt; the keyboard and mouse (if it is captured) and return them to normal operation. The currently assigned host key combo is shown on the status bar at the bottom of the Virtual Machine window. This icon, together with the mouse icon placed nearby, indicate the current keyboard and mouse capture state.&lt;/p&gt;</source>
@@ -10843,7 +10843,7 @@
     </message>
     <message>
         <source>&lt;p&gt;Close these VMs with no shutdown procedure?&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;&lt;p&gt;Unsaved data in applications running on the VM will be lost.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Stänga dessa virtuella maskiner utan avstängningsprocedur?&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;&lt;p&gt;Osparade data i program som körs på den virtuella maskinen kommer att gå förlorade.&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Vill du stänga dessa virtuella maskiner utan avstängningsprocedur?&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;&lt;p&gt;Osparade data i program som körs på de virtuella maskinerna går förlorade.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&lt;p&gt;Remove these virtual machine items from the machine list?&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;</source>
@@ -10855,11 +10855,11 @@
     </message>
     <message>
         <source>Delete the virtual machine files and virtual hard disks.</source>
-        <translation>Ta bort virtuella maskinfiler och virtuella hårddiskar.</translation>
+        <translation>Ta bort de virtuella maskinfilerna och de virtuella hårddiskarna.</translation>
     </message>
     <message>
         <source>Delete the virtual machine files.</source>
-        <translation>Ta bort virtuella maskinfilerna.</translation>
+        <translation>Ta bort de virtuella maskinfilerna.</translation>
     </message>
     <message>
         <source>Can&apos;t send shutdown signal ...</source>
