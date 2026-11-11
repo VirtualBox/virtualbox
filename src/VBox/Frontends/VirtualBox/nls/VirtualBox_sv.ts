@@ -8201,11 +8201,11 @@
     </message>
     <message>
         <source>Please choose a virtual floppy disk file</source>
-        <translation>Välj en virtuell diskettavbildningsfil</translation>
+        <translation>Välj en virtuell diskettfil</translation>
     </message>
     <message>
         <source>All virtual floppy disk files (%1)</source>
-        <translation>Alla virtuella diskettavbildningsfiler (%1)</translation>
+        <translation>Alla virtuella diskettfiler (%1)</translation>
     </message>
     <message>
         <source>All files (*)</source>
@@ -8213,7 +8213,7 @@
     </message>
     <message>
         <source>Choose/Create a Disk Image...</source>
-        <translation>Välj/skapa en diskavbildning...</translation>
+        <translation>Välj eller skapa en diskavbildning...</translation>
     </message>
     <message>
         <source>Choose a Disk File...</source>
