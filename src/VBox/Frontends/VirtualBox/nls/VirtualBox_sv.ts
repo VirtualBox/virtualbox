@@ -6350,7 +6350,7 @@
     <name>UIGlobalSettingsGeneral</name>
     <message>
         <source>Default machine folder is missing.</source>
-        <translation>Standardmapp för maskiner saknas.</translation>
+        <translation>Standardmappen för virtuella maskiner saknas.</translation>
     </message>
 </context>
 <context>
@@ -15225,7 +15225,7 @@
     </message>
     <message>
         <source>Periodically connect to the VirtualBox website and check whether a new VirtualBox version is available</source>
-        <translation>Anslut regelbundet till VirtualBox webbplats och kontrollera om en ny version av VirtualBox finns tillgänglig</translation>
+        <translation>Anslut regelbundet till VirtualBox-webbplatsen och kontrollera om en ny version av VirtualBox finns tillgänglig</translation>
     </message>
     <message>
         <source>&amp;Once per</source>
