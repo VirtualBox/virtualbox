@@ -53,7 +53,7 @@
     </message>
     <message>
         <source>Make sure the kernel module has been loaded successfully.</source>
-        <translation>Försäkra dig om att kärnmodulen har lästs in korrekt.</translation>
+        <translation>Kontrollera att kärnmodulen har lästs in korrekt.</translation>
     </message>
     <message>
         <source>VirtualBox - Runtime Error</source>
@@ -81,19 +81,19 @@
     </message>
     <message>
         <source>The VirtualBox Linux kernel driver is either not loaded or not set up correctly. Please try setting it up again by executing&lt;br/&gt;&lt;br/&gt;  &lt;font color=blue&gt;&apos;/sbin/vboxconfig&apos;&lt;/font&gt;&lt;br/&gt;&lt;br/&gt;as root.&lt;br/&gt;&lt;br/&gt;If your system has EFI Secure Boot enabled you may also need to sign the kernel modules (vboxdrv, vboxnetflt, vboxnetadp, vboxpci) before you can load them. Please see your Linux system&apos;s documentation for more information.</source>
-        <translation>VirtualBox Linux-kärndrivrutin är antingen inte inläst eller inte konfigurerad korrekt. Konfigurera den igen genom att köra &lt;br/&gt;&lt;br/&gt;  &lt;font color=blue&gt;&apos;/sbin/vboxconfig&apos;&lt;/font&gt;&lt;br/&gt;&lt;br/&gt;som root.&lt;br/&gt;&lt;br/&gt;Om ditt system har säker UEFI-start aktiverad kan du också behöva signera kärnmodulerna (vboxdrv, vboxnetflt, vboxnetadp, vboxpci) innan du kan läsa in dem. Se dokumentationen för ditt Linux-system för mer information.</translation>
+        <translation>Linux-kärndrivrutinen för VirtualBox är antingen inte inläst eller felkonfigurerad. Konfigurera den igen genom att köra &lt;br/&gt;&lt;br/&gt;  &lt;font color=blue&gt;&apos;/sbin/vboxconfig&apos;&lt;/font&gt;&lt;br/&gt;&lt;br/&gt;som root-användare.&lt;br/&gt;&lt;br/&gt;Om ditt system har säker UEFI-start aktiverad kan du också behöva signera kärnmodulerna (vboxdrv, vboxnetflt, vboxnetadp, vboxpci) innan du kan läsa in dem. Se dokumentationen för ditt Linux-system för mer information.</translation>
     </message>
     <message>
         <source>The VirtualBox kernel modules do not match this version of VirtualBox. The installation of VirtualBox was apparently not successful. Executing&lt;br/&gt;&lt;br/&gt;  &lt;font color=blue&gt;&apos;/sbin/vboxconfig&apos;&lt;/font&gt;&lt;br/&gt;&lt;br/&gt;may correct this. Make sure that you are not mixing builds of VirtualBox from different sources.</source>
-        <translation>VirtualBox kärnmoduler stämmer inte överens med denna version av VirtualBox. Installationen av VirtualBox lyckades antagligen inte. Kör &lt;br/&gt;&lt;br/&gt;  &lt;font color=blue&gt;&apos;/sbin/vboxconfig&apos;&lt;/font&gt;&lt;br/&gt;&lt;br/&gt;kan lösa detta problem. Försäkra dig om att du inte blandar versioner av VirtualBox från olika källor.</translation>
+        <translation>VirtualBox-kärnmodulerna stämmer inte överens med denna version av VirtualBox. Installationen lyckades antagligen inte. Kör &lt;br/&gt;&lt;br/&gt;  &lt;font color=blue&gt;&apos;/sbin/vboxconfig&apos;&lt;/font&gt;&lt;br/&gt;&lt;br/&gt;som root-användare. Det kan lösa problemet. Blanda inte byggen av VirtualBox från olika källor.</translation>
     </message>
     <message>
         <source>This VirtualBox application was built for a different CPU architecture (&lt;b&gt;%1&lt;/b&gt;) than the host (&lt;b&gt;%2&lt;/b&gt;). Please reinstall.</source>
-        <translation>Denna VirtualBox-applikation är byggd för en annan CPU-arkitektur (&lt;b&gt;%1&lt;/b&gt;) än värden (&lt;b&gt;%2&lt;/b&gt;). Installera om programmet.</translation>
+        <translation>Det här VirtualBox-programmet är byggt för en annan processorarkitektur (&lt;b&gt;%1&lt;/b&gt;) än värden (&lt;b&gt;%2&lt;/b&gt;). Installera om programmet.</translation>
     </message>
     <message>
         <source>Mismatching CPU Architecture</source>
-        <translation>CPU-arkitekturen stämmer inte</translation>
+        <translation>Processorarkitekturen stämmer inte</translation>
     </message>
 </context>
 <context>
@@ -224,11 +224,11 @@
     </message>
     <message>
         <source>Nested Pa&amp;ging</source>
-        <translation>Nested Pa&amp;ging</translation>
+        <translation>Nä&amp;stlad sidindelning</translation>
     </message>
     <message>
         <source>Use the nested paging extension of Intel VT-x and AMD-V on the virtual machine</source>
-        <translation>Använd utökningen nested paging i Intel VT-x och AMD-V på den virtuella maskinen</translation>
+        <translation>Aktivera nästlad sidindelning med Intel VT-x och AMD-V för den virtuella maskinen</translation>
     </message>
 </context>
 <context>
@@ -255,13 +255,13 @@
     <message>
         <source>We haven&apos;t found public key id_rsa[.pub] in suitable locations. If you have one, please put it under one of those folders OR copy content to the edit box below:&lt;br&gt;&lt;br&gt;%1&lt;br&gt;&lt;br&gt;If you don&apos;t have one, please consider using one of the following tools to generate it:&lt;br&gt;&lt;br&gt;%2</source>
         <translation variants="yes">
-            <lengthvariant>Vi har inte hittat public key id_rsa[.pub] på en lämplig plats. Om du har en, lägg den under en av dessa mappar ELLER kopiera innehållet till redigeringsrutan nedan:&lt;br&gt;&lt;br&gt;%1&lt;br&gt;&lt;br&gt;Om du inte har en, överväg att använda ett av följande verktyg för att generera den:&lt;br&gt;&lt;br&gt;%2</lengthvariant>
-            <lengthvariant></lengthvariant>
+            <lengthvariant>Vi har inte hittat den publika nyckeln id_rsa[.pub] på någon lämplig plats. Om du har en sådan lägger du den i någon av dessa mappar ELLER kopierar innehållet till redigeringsrutan nedan:&lt;br&gt;&lt;br&gt;%1&lt;br&gt;&lt;br&gt;Om du inte har någon, kan du skapa en med något av följande verktyg:&lt;br&gt;&lt;br&gt;%2</lengthvariant>
+            <lengthvariant>Hittade inte den publika nyckeln id_rsa[.pub]. Lägg den i någon av dessa mappar eller kopiera innehållet till redigeringsrutan nedan:&lt;br&gt;&lt;br&gt;%1&lt;br&gt;&lt;br&gt;Skapa annars en med något av följande verktyg:&lt;br&gt;&lt;br&gt;%2</lengthvariant>
         </translation>
     </message>
     <message>
         <source>We haven&apos;t found public key id_rsa[.pub] in suitable location. If you have one, please put it under specified folder OR copy content to the edit box below:&lt;br&gt;&lt;br&gt;%1&lt;br&gt;&lt;br&gt;If you don&apos;t have one, please consider using the following tool to generate it:&lt;br&gt;&lt;br&gt;%2</source>
-        <translation>Vi har inte hittat public key id_rsa[.pub] på en lämplig plats. Om du har en, lägg den under angiven mapp ELLER kopiera innehållet till redigeringsrutan nedan:&lt;br&gt;&lt;br&gt;%1&lt;br&gt;&lt;br&gt;Om du inte har en, överväg att använda följande verktyg för att generera den:&lt;br&gt;&lt;br&gt;%2</translation>
+        <translation>Vi har inte hittat den publika nyckeln id_rsa[.pub] på någon lämplig plats. Om du har en sådan lägger du den i den angivna mappen ELLER kopierar innehållet till redigeringsrutan nedan:&lt;br&gt;&lt;br&gt;%1&lt;br&gt;&lt;br&gt;Om du inte har någon, kan du skapa en med följande verktyg:&lt;br&gt;&lt;br&gt;%2</translation>
     </message>
     <message>
         <source>Paste public key</source>
@@ -292,7 +292,7 @@
     </message>
     <message>
         <source>Adjust window size and position to best fit the guest display</source>
-        <translation>Justera fönsterstorlek och -position till bästa passning för gästskärmen</translation>
+        <translation>Justera fönstrets storlek och position så att de passar gästskärmen så bra som möjligt</translation>
     </message>
     <message>
         <source>Take a snapshot of the virtual machine</source>
@@ -532,7 +532,7 @@
     </message>
     <message>
         <source>&amp;Insert Guest Additions CD image...</source>
-        <translation>Mata &amp;in cd-avbild för gästtillägg...</translation>
+        <translation>Mata &amp;in CD-avbildning för gästtillägg...</translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -646,7 +646,7 @@
     </message>
     <message>
         <source>Open pane with searching options</source>
-        <translation>Öppna panel med sökalternativ</translation>
+        <translation>Öppna panelen med sökalternativ</translation>
     </message>
     <message>
         <source>&amp;Filter</source>
@@ -654,7 +654,7 @@
     </message>
     <message>
         <source>Open pane with filtering options</source>
-        <translation>Öppna panel med filtreringsalternativ</translation>
+        <translation>Öppna panelen med filtreringsalternativ</translation>
     </message>
     <message>
         <source>&amp;Bookmark</source>
@@ -662,7 +662,7 @@
     </message>
     <message>
         <source>Open pane with bookmarking options</source>
-        <translation>Öppna panel med bokmärkesalternativ</translation>
+        <translation>Öppna panelen med bokmärkesalternativ</translation>
     </message>
     <message>
         <source>&amp;Refresh</source>
@@ -726,7 +726,7 @@
     </message>
     <message>
         <source>Go to Home Folder</source>
-        <translation>Gå till hemmapp</translation>
+        <translation>Gå till hemmappen</translation>
     </message>
     <message>
         <source>Delete</source>
@@ -770,7 +770,7 @@
     </message>
     <message>
         <source>Paste copied/cut file object(s)</source>
-        <translation>Klistra in kopierade/utklippta fil objekt</translation>
+        <translation>Klistra in kopierade eller utklippta filobjekt</translation>
     </message>
     <message>
         <source>Select All</source>
@@ -822,7 +822,7 @@
     </message>
     <message>
         <source>Rename selected virtual machine group</source>
-        <translation>Ta bort markerad grupp för virtual maskiner</translation>
+        <translation>Byt namn på markerad grupp för virtuella maskiner</translation>
     </message>
     <message>
         <source>&amp;Ungroup</source>
@@ -922,7 +922,7 @@
     </message>
     <message>
         <source>Show the VirtualBox Machine Definition files in Finder</source>
-        <translation>Visa VirtualBox maskindefinitionsfiler i Finder</translation>
+        <translation>Visa VirtualBox-maskindefinitionsfiler i Finder</translation>
     </message>
     <message>
         <source>S&amp;how in Explorer</source>
@@ -930,7 +930,7 @@
     </message>
     <message>
         <source>Show the VirtualBox Machine Definition files in Explorer</source>
-        <translation>Visa VirtualBox maskindefinitionsfiler i Utforskaren</translation>
+        <translation>Visa VirtualBox-maskindefinitionsfiler i Utforskaren</translation>
     </message>
     <message>
         <source>S&amp;how in File Manager</source>
@@ -938,7 +938,7 @@
     </message>
     <message>
         <source>Show the VirtualBox Machine Definition files in the File Manager</source>
-        <translation>Visa VirtualBox maskindefinitionsfiler i Filhanteraren</translation>
+        <translation>Visa VirtualBox-maskindefinitionsfiler i filhanteraren</translation>
     </message>
     <message>
         <source>Cr&amp;eate Alias on Desktop</source>
@@ -946,7 +946,7 @@
     </message>
     <message>
         <source>Create alias files to the VirtualBox Machine Definition files on your desktop</source>
-        <translation>Skapa aliasfiler till VirtualBox maskindefinitionsfiler på ditt skrivbord</translation>
+        <translation>Skapa aliasfiler till VirtualBox-maskindefinitionsfiler på skrivbordet</translation>
     </message>
     <message>
         <source>Cr&amp;eate Shortcut on Desktop</source>
@@ -954,7 +954,7 @@
     </message>
     <message>
         <source>Create shortcut files to the VirtualBox Machine Definition files on your desktop</source>
-        <translation>Skapa genvägsfiler till VirtualBox maskindefinitionsfiler på ditt skrivbord</translation>
+        <translation>Skapa genvägsfiler till VirtualBox-maskindefinitionsfiler på skrivbordet</translation>
     </message>
     <message>
         <source>&amp;Detach GUI</source>
@@ -962,7 +962,7 @@
     </message>
     <message>
         <source>Detach the GUI from headless VM</source>
-        <translation>Frikoppla grafiska gränssnittet från huvudlös virtuell maskin</translation>
+        <translation>Frikoppla det grafiska gränssnittet från den huvudlösa virtuella maskinen</translation>
     </message>
     <message>
         <source>&amp;Save State</source>
@@ -1010,7 +1010,7 @@
     </message>
     <message>
         <source>Open the Cloud Profile Manager</source>
-        <translation>Öppna hanterare för molnprofiler</translation>
+        <translation>Öppna hanteraren för molnprofiler</translation>
     </message>
     <message>
         <source>&amp;Snapshot</source>
@@ -1050,7 +1050,7 @@
     </message>
     <message>
         <source>Open pane with the selected snapshot properties</source>
-        <translation>Öppna panel med egenskaper för markerad ögonblicksbild</translation>
+        <translation>Öppna panelen med egenskaper för den markerade ögonblicksbilden</translation>
     </message>
     <message>
         <source>&amp;Clone...</source>
@@ -1094,7 +1094,7 @@
     </message>
     <message>
         <source>Open pane with selected host-only network properties</source>
-        <translation>Öppna panel med egenskaper för markerat endast-värd-nätverk</translation>
+        <translation>Öppna panelen med egenskaper för det markerade endast-värd-nätverket</translation>
     </message>
     <message>
         <source>Refresh the list of host-only networks</source>
@@ -1114,7 +1114,7 @@
     </message>
     <message>
         <source>Cloud Profile Manager</source>
-        <translation>Hantera molnprofiler</translation>
+        <translation>Hanterare för molnprofiler</translation>
     </message>
     <message>
         <source>Add new cloud profile</source>
@@ -1146,11 +1146,11 @@
     </message>
     <message>
         <source>Profile &amp;Properties</source>
-        <translation>Profile&amp;genskaper</translation>
+        <translation>Profil&amp;egenskaper</translation>
     </message>
     <message>
         <source>Open pane with selected cloud profile properties</source>
-        <translation>Öppna panel med egenskaper för markerad molnprofil</translation>
+        <translation>Öppna panelen med egenskaper för den markerade molnprofilen</translation>
     </message>
     <message>
         <source>Help</source>
@@ -1174,7 +1174,7 @@
     </message>
     <message>
         <source>Save the state of the virtual machine</source>
-        <translation>Spara tillståndet för virtuella maskinen</translation>
+        <translation>Spara tillståndet för den virtuella maskinen</translation>
     </message>
     <message>
         <source>Send the ACPI Shutdown signal to the virtual machine</source>
@@ -1401,17 +1401,17 @@
     <message>
         <source>Scale to %1%</source>
         <comment>scale-factor</comment>
-        <translation>Skala till %1%</translation>
+        <translation>Skala till %1 %</translation>
     </message>
     <message>
         <source>Scale to %1% (unscaled output)</source>
         <comment>scale-factor</comment>
-        <translation>Skala till %1% (oskalad utmatning)</translation>
+        <translation>Skala till %1 % (oskalad utmatning)</translation>
     </message>
     <message>
         <source>Scale to %1% (autoscaled output)</source>
         <comment>scale-factor</comment>
-        <translation>Skala till %1% (automatiskt skalad utmatning)</translation>
+        <translation>Skala till %1 % (automatiskt skalad utmatning)</translation>
     </message>
     <message>
         <source>Resize to %1x%2</source>
@@ -2002,7 +2002,7 @@
     </message>
     <message>
         <source>&amp;Console</source>
-        <translation>&amp;Konsoll</translation>
+        <translation>&amp;Konsol</translation>
     </message>
     <message>
         <source>&amp;Add Application...</source>
@@ -2174,7 +2174,7 @@
     </message>
     <message>
         <source>Restore selected item(s)</source>
-        <translation>Ta bort markerade post(er)</translation>
+        <translation>Återställ markerade post(er)</translation>
     </message>
     <message>
         <source>Restore Selected Item(s)</source>
@@ -2358,7 +2358,7 @@
     </message>
     <message>
         <source>&amp;Open Cloud Machine...</source>
-        <translation>&amp;Öppna molnmaskin...</translation>
+        <translation>Ö&amp;ppna molnmaskin...</translation>
     </message>
     <message>
         <source>Open existing cloud virtual machine</source>
@@ -2693,7 +2693,7 @@
     </message>
     <message>
         <source>Detailed list of all components of all virtual machines of the current appliance</source>
-        <translation>Detaljerad lista över alla komponenter för alla virtuella maskin i den aktuella appliancen</translation>
+        <translation>Detaljerad lista över alla komponenter i alla virtuella maskiner i den aktuella appliance-filen</translation>
     </message>
     <message>
         <source>Settings File</source>
@@ -2724,11 +2724,11 @@
     </message>
     <message>
         <source>&lt;b&gt;The appliance is signed by an unverified self signed certificate issued by &apos;%1&apos;. We recommend to only proceed with the importing if you are sure you should trust this entity.&lt;/b&gt;</source>
-        <translation>&lt;b&gt;Denna appliance är signerad av ett icke-verifierat självsignerat certifikat utfärdat av &apos;%1&apos;. Vi rekommenderar att endast fortsätta med importen om du är säker på att du kan lita på denna entitet.&lt;/b&gt;</translation>
+        <translation>&lt;b&gt;Den här appliance-filen är signerad med ett overifierat självsignerat certifikat utfärdat av ”%1”. Fortsätt bara med importen om du är säker på att du kan lita på utfärdaren.&lt;/b&gt;</translation>
     </message>
     <message>
         <source>&lt;b&gt;The appliance is signed by an unverified certificate issued to &apos;%1&apos;. We recommend to only proceed with the importing if you are sure you should trust this entity.&lt;/b&gt;</source>
-        <translation>&lt;b&gt;Denna appliance är signerad av ett icke-verifierat certifikat utfärdat till &apos;%1&apos;. Vi rekommenderar att endast fortsätta med importen om du är säker på att du kan lita på denna entitet.&lt;/b&gt;</translation>
+        <translation>&lt;b&gt;Den här appliance-filen är signerad med ett overifierat certifikat utfärdat till ”%1”. Fortsätt bara med importen om du är säker på att du kan lita på certifikatinnehavaren.&lt;/b&gt;</translation>
     </message>
     <message>
         <source>True</source>
@@ -2840,7 +2840,7 @@
     </message>
     <message>
         <source>Output to the virtual audio device will reach the host. Otherwise the guest is muted.</source>
-        <translation>Utmatningen till den virtuella ljudenheten når till värden. Annars är gästen tystad.</translation>
+        <translation>Ljudet från den virtuella ljudenheten skickas till värden. Annars är gästen tyst.</translation>
     </message>
     <message>
         <source>Audio &amp;Input</source>
@@ -2848,7 +2848,7 @@
     </message>
     <message>
         <source>The guest will be able to capture audio input from the host. Otherwise the guest will capture only silence.</source>
-        <translation>Gästen kommer att kunna fånga ljudingången från värden. Annars kommer gästen endast att fånga tyst.</translation>
+        <translation>Gästen kan spela in ljud från värden. Annars får gästen bara tystnad.</translation>
     </message>
 </context>
 <context>
@@ -2867,7 +2867,7 @@
     </message>
     <message>
         <source>Audio output driver. The Null Audio Driver makes the guest see an audio card, however every access to it will be ignored.</source>
-        <translation>Drivrutin för ljudutgång. Ljuddrivrutinen Null gör att gästen ser ett ljudkort, men varje åtkomst till det ignoreras.</translation>
+        <translation>Drivrutin för ljudutgång. Null-ljuddrivrutinen gör att gästen ser ett ljudkort, men alla åtkomster till det ignoreras.</translation>
     </message>
 </context>
 <context>
@@ -2882,7 +2882,7 @@
     </message>
     <message>
         <source>A virtual PCI audio card will be plugged into the virtual machine and will communicate with the host audio system using the specified driver</source>
-        <translation>Ett virtuellt PCI-ljudkort kommer att anslutas till den virtuella maskinen och kommunicera med värdens ljudsystem med hjälp av den angivna drivrutinen</translation>
+        <translation>Ett virtuellt PCI-ljudkort ansluts till den virtuella maskinen och kommunicerar med värdens ljudsystem med den angivna drivrutinen</translation>
     </message>
 </context>
 <context>
@@ -2893,7 +2893,7 @@
     </message>
     <message>
         <source>&amp;Auto Capture Keyboard</source>
-        <translation>Fånga tangentbord &amp;automatiskt</translation>
+        <translation>Fånga tangentbordet &amp;automatiskt</translation>
     </message>
     <message>
         <source>When checked, the keyboard is automatically captured every time the VM window is activated. When the keyboard is captured, all keystrokes (including system ones like Alt-Tab) are directed to the VM.</source>
@@ -2905,7 +2905,7 @@
     </message>
     <message>
         <source>Keyboard is automatically captured every time the VM window is activated. When the keyboard is captured, all keystrokes (including system ones like Alt-Tab) are directed to the VM.</source>
-        <translation>Tangentbordet fångas automatiskt varje gång VM-fönstret aktiveras. När tangentbordet fångas dirigeras alla tangenttryckningar (inklusive systemtangenter som Alt-Tab) till denna VM.</translation>
+        <translation>Tangentbordet fångas automatiskt varje gång fönstret för den virtuella maskinen aktiveras. När tangentbordet är fångat skickas alla tangenttryckningar, även systemtangenter som Alt-Tab, till den virtuella maskinen.</translation>
     </message>
 </context>
 <context>
@@ -2940,15 +2940,15 @@
     </message>
     <message>
         <source>VM&apos;s installed RAM</source>
-        <translation>Installerat RAM för VM</translation>
+        <translation>Installerat RAM-minne för den virtuella maskinen</translation>
     </message>
     <message>
         <source>Minimum RAM</source>
-        <translation>Minimalt RAM</translation>
+        <translation>Minsta RAM-minne</translation>
     </message>
     <message>
         <source>Maximum RAM</source>
-        <translation>Maximalt RAM</translation>
+        <translation>Maximalt RAM-minne</translation>
     </message>
 </context>
 <context>
@@ -2967,11 +2967,11 @@
     </message>
     <message>
         <source>Mounts the selected ISO if any and reboots the vm</source>
-        <translation>Monterar den valda ISOn om någon och startar om virtuella maskinen</translation>
+        <translation>Monterar den valda ISO-filen, om någon har valts, och startar om den virtuella maskinen</translation>
     </message>
     <message>
         <source>The virtual machine failed to boot. That might be caused by a missing operating system or misconfigured boot order. Mounting an operating system install DVD might solve this problem. Selecting an ISO file will attempt to mount it after the dialog is closed.</source>
-        <translation>Den virtuella maskinen misslyckades med att starta upp. Det kan bero på att operativsystemet saknas eller att uppstartsordningen är felaktig. Montera en dvd-installationsskiva för ett operativsystem kan lösa detta problem. Välj en ISO-avbildning kommer att försöka montera den efter att dialogen har stängts.</translation>
+        <translation>Den virtuella maskinen kunde inte starta. Det kan bero på att ett operativsystem saknas eller att uppstartsordningen är felaktig. Problemet kan lösas genom att montera en DVD med ett operativsystem. Om du väljer en ISO-fil försöker VirtualBox montera den när dialogrutan stängs.</translation>
     </message>
     <message>
         <source>DVD:</source>
@@ -2983,11 +2983,11 @@
     </message>
     <message>
         <source>When checked this dialog will not be shown again.</source>
-        <translation>När kryssad kommer denna dialog inte att visas igen.</translation>
+        <translation>När rutan är markerad visas inte den här dialogrutan igen.</translation>
     </message>
     <message>
         <source>Holds the path of the ISO to be attached to machine as boot medium.</source>
-        <translation>Håller sökvägen för ISOn att anslutas till maskinen som uppstartsmedia.</translation>
+        <translation>Anger sökvägen till ISO-filen som ska anslutas till maskinen som uppstartsmedium.</translation>
     </message>
     <message>
         <source>The path is invalid</source>
@@ -3022,7 +3022,7 @@
     </message>
     <message>
         <source>VM will attempt to boot from checked devices, in order. Note: only supported for BIOS firmware type, i.e. when below UEFI option is off.</source>
-        <translation>VM kommer att försöka starta från markerade enheter, i ordning. Observera: Stöds endast för BIOS-firmwaretyp, dvs. när alternativet nedan för UEFI är avstängt.</translation>
+        <translation>Den virtuella maskinen försöker starta från de markerade enheterna i den angivna ordningen. Observera att detta bara stöds med BIOS, när UEFI-alternativet nedan är avstängt.</translation>
     </message>
     <message>
         <source>Move device up in boot order</source>
@@ -4893,7 +4893,7 @@
     <message>
         <source>%1%</source>
         <comment>details</comment>
-        <translation>%1%</translation>
+        <translation>%1 %</translation>
     </message>
     <message>
         <source>Boot Order</source>
@@ -6779,7 +6779,7 @@
     </message>
     <message>
         <source>Scroll Lock</source>
-        <translation>ScrollLock</translation>
+        <translation>Scroll Lock</translation>
     </message>
     <message>
         <source>Host+</source>
@@ -7075,7 +7075,7 @@
     <message>
         <source>Indicates whether the host mouse pointer is captured by the guest OS:%1</source>
         <comment>Mouse tooltip</comment>
-        <translation>Indikerar huruvida värdens muspekare är fångad av gästoperativsystemet %1</translation>
+        <translation>Indikerar huruvida värdens muspekare är fångad av gästoperativsystemet: %1</translation>
     </message>
     <message>
         <source>Pointer is not captured</source>
@@ -7549,11 +7549,11 @@
     </message>
     <message>
         <source>More than &lt;b&gt;%1%&lt;/b&gt; of the host computer&apos;s memory (&lt;b&gt;%2&lt;/b&gt;) is assigned to the virtual machine. Not enough memory is left for the host operating system. Please select a smaller amount.</source>
-        <translation>Mer än &lt;b&gt;%1%&lt;/b&gt; av värddatorns minne (&lt;b&gt;%2&lt;/b&gt;) har tilldelats den virtuella maskinen. Det inte finns tillräckligt mycket minne kvar för värdens operativsystem. Välj ett mindre värde.</translation>
+        <translation>Mer än &lt;b&gt;%1 %&lt;/b&gt; av värddatorns minne (&lt;b&gt;%2&lt;/b&gt;) har tilldelats den virtuella maskinen. Det finns inte tillräckligt mycket minne kvar för värdens operativsystem. Välj ett mindre värde.</translation>
     </message>
     <message>
         <source>More than &lt;b&gt;%1%&lt;/b&gt; of the host computer&apos;s memory (&lt;b&gt;%2&lt;/b&gt;) is assigned to the virtual machine. There might not be enough memory left for the host operating system. Please consider selecting a smaller amount.</source>
-        <translation>Mer än &lt;b&gt;%1%&lt;/b&gt; av värddatorns minne (&lt;b&gt;%2&lt;/b&gt;) har tilldelats den virtuella maskinen. Det kan innebära att det inte finns tillräckligt mycket minne kvar för värdens operativsystem. Överväg att minska detta värde.</translation>
+        <translation>Mer än &lt;b&gt;%1 %&lt;/b&gt; av värddatorns minne (&lt;b&gt;%2&lt;/b&gt;) har tilldelats den virtuella maskinen. Det kan innebära att det inte finns tillräckligt mycket minne kvar för värdens operativsystem. Överväg att minska detta värde.</translation>
     </message>
     <message>
         <source>For performance reasons, the number of virtual CPUs attached to the virtual machine may not be more than twice the number of physical CPUs on the host (&lt;b&gt;%1&lt;/b&gt;). Please reduce the number of virtual CPUs.</source>
@@ -7565,7 +7565,7 @@
     </message>
     <message>
         <source>The processor execution cap is set to a low value. This may make the machine feel slow to respond.</source>
-        <translation>Processorns exekveringsgräns är inställd till ett lågt värde. Detta kan göras att maskinen känns långsam att svara.</translation>
+        <translation>Processorns exekveringsgräns är inställd till ett lågt värde. Det kan göra att maskinen känns långsam att svara.</translation>
     </message>
     <message>
         <source>The I/O APIC feature is not currently enabled in the Motherboard section of the System page. This is needed to support a chipset of type ICH9. It will be enabled automatically if you confirm your changes.</source>
@@ -10802,7 +10802,7 @@
     </message>
     <message>
         <source>&lt;p&gt;You have the &lt;b&gt;Auto capture keyboard&lt;/b&gt; option turned on. This will cause the Virtual Machine to automatically &lt;b&gt;capture&lt;/b&gt; the keyboard every time the VM window is activated and make it unavailable to other applications running on your host machine: when the keyboard is captured, all keystrokes (including system ones like Alt-Tab) will be directed to the VM.&lt;/p&gt;&lt;p&gt;You can press the &lt;b&gt;host key combo&lt;/b&gt; at any time to &lt;b&gt;uncapture&lt;/b&gt; the keyboard and mouse (if it is captured) and return them to normal operation. The currently assigned host key combo is shown on the status bar at the bottom of the Virtual Machine window. This icon, together with the mouse icon placed nearby, indicate the current keyboard and mouse capture state.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Du har alternativet &lt;b&gt;Fånga automatiskt tangentbordet&lt;/b&gt; aktiverat. Detta innebär att den virtuella maskinen automatiskt &lt;b&gt;fångar&lt;/b&gt; tangentbordet varje gång som det virtuella maskinfönstret aktiveras och gör det otillgängligt för andra program som körs på din värdmaskin när tangentbordet är fångat, alla tangenttryckningar (inklusive systemtangenter som Alt-Tab) kommer att dirigeras till den virtuella maskinen.&lt;/p&gt;&lt;p&gt;Du kan trycka på &lt;b&gt;värdtangentskombinationen&lt;/b&gt; när som helst för att &lt;b&gt;avfånga&lt;/b&gt; tangentbordet och musen (om den är fångad) och återlämna dem till normal operation. Den för närvarande tilldelade värdtangentkombinationen visas på statusraden nederst i det virtuella maskinfönstret. Denna ikon, tillsammans med musikonen bredvid, indikerar det aktuella fångsttillståndet för tangentbord och mus.&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Alternativet &lt;b&gt;Fånga tangentbordet automatiskt&lt;/b&gt; är aktiverat. Den virtuella maskinen &lt;b&gt;fångar&lt;/b&gt; då automatiskt tangentbordet varje gång maskinfönstret aktiveras. Tangentbordet blir då otillgängligt för andra program på värddatorn: när tangentbordet är fångat skickas alla tangenttryckningar, även systemtangenter som Alt-Tab, till den virtuella maskinen.&lt;/p&gt;&lt;p&gt;Du kan när som helst trycka på &lt;b&gt;värdtangentkombinationen&lt;/b&gt; för att &lt;b&gt;släppa&lt;/b&gt; tangentbordet och musen, om de är fångade, så att de fungerar normalt igen. Den aktuella värdtangentkombinationen visas på statusraden längst ned i maskinfönstret. Den här ikonen och ikonen för musen bredvid den visar om tangentbordet och musen är fångade.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>Failed to change machine debugger parameter.</source>
@@ -11388,7 +11388,7 @@
     </message>
     <message>
         <source>MAC address of this adapter. It contains exactly 12 characters chosen from {0-9,A-F}. Note that the second character must be an even digit.</source>
-        <translation>MAC-adress för detta kort. Den innehåller exakt 12 tecken valda från {0-9,A-F}. Observera att det andra tecknet måste vara ett jämn siffra.</translation>
+        <translation>MAC-adress för detta kort. Den innehåller exakt 12 tecken valda från {0-9,A-F}. Observera att det andra tecknet måste vara en jämn siffra.</translation>
     </message>
     <message>
         <source>Generate a new random MAC address</source>
@@ -11675,7 +11675,7 @@
     </message>
     <message>
         <source>&amp;Upper Address Bound:</source>
-        <translation>&amp;Övre adressgräns:</translation>
+        <translation>Övre adress&amp;gräns:</translation>
     </message>
     <message>
         <source>Holds the upper address bound offered by the DHCP server servicing the network associated with this host-only adapter.</source>
@@ -12584,7 +12584,7 @@
     </message>
     <message>
         <source>Proxy URL. The format is: &lt;table cellspacing=0 style=&apos;white-space:pre&apos;&gt;&lt;tr&gt;&lt;td&gt;[{type}://][{userid}[:{password}]@]{server}[:{port}]&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;http://username:password@proxy.host.com:port&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</source>
-        <translation>URL för proxy. Formatet är: &lt;table cellspacing=0 style=’white-space:pre’&gt;&lt;tr&gt;&lt;td&gt;[{type}://][{userid}[:{password}]@]{server}[:{port}]&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;http://användarnamn:lösenord@proxy.värd.se:port&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</translation>
+        <translation>URL för proxy. Formatet är: &lt;table cellspacing=0 style=&apos;white-space:pre&apos;&gt;&lt;tr&gt;&lt;td&gt;[{type}://][{userid}[:{password}]@]{server}[:{port}]&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;http://username:password@proxy.host.com:port&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</translation>
     </message>
 </context>
 <context>
@@ -15549,7 +15549,7 @@
     </message>
     <message>
         <source>&amp;Restore current snapshot &apos;%1&apos;</source>
-        <translation>&amp;Återställ aktuell ögonblicksbild &quot;%1&quot;</translation>
+        <translation>Å&amp;terställ aktuell ögonblicksbild &quot;%1&quot;</translation>
     </message>
     <message>
         <source>&amp;Continue running in the background</source>
@@ -15561,7 +15561,7 @@
     </message>
     <message>
         <source>&lt;p&gt;Sends the ACPI power button press event to the virtual machine.&lt;/p&gt;&lt;p&gt;Normally, the guest operating system running inside the virtual machine will detect this event and perform a clean shutdown procedure. This is a recommended way to turn off the virtual machine because all applications running inside it will get a chance to save their data and state.&lt;/p&gt;&lt;p&gt;If the machine doesn&apos;t respond to this action then the guest operating system may be misconfigured or doesn&apos;t understand ACPI power button events at all. In this case you should select the &lt;b&gt;Power off the machine&lt;/b&gt; action to stop virtual machine execution.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Skickar ACPI-strömknappshändelsen till den virtuella maskinen.&lt;/p&gt;&lt;p&gt;Normalt kommer gästoperativsystemet som körs i den virtuella maskinen att upptäcka denna händelse och utföra en ren avstängningsprocedur. Detta är ett rekommenderat sätt att stänga av den virtuella maskinen eftersom alla applikationer som körs i den får en chans att spara sina data och sitt tillstånd. &lt;/p&gt;&lt;p&gt;Om maskinen inte svarar på denna åtgärd kan gästoperativsystemet vara felkonfigurerat eller inte förstå ACPI-strömknapphändelser alls. I detta fall bör du välja åtgärden &lt;b&gt;Stäng av maskinen&lt;/b&gt; för att stoppa den virtuella maskinens körning&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Skickar en ACPI-strömknappshändelse till den virtuella maskinen.&lt;/p&gt;&lt;p&gt;Normalt upptäcker gästoperativsystemet som körs i den virtuella maskinen händelsen och stängs av på ett korrekt sätt. Det är det rekommenderade sättet att stänga av den virtuella maskinen, eftersom alla program som körs i den då får möjlighet att spara sina data och sitt tillstånd.&lt;/p&gt;&lt;p&gt;Om maskinen inte svarar kan gästoperativsystemet vara felkonfigurerat eller sakna stöd för ACPI-strömknappshändelser. Välj då åtgärden &lt;b&gt;Stäng av maskinen&lt;/b&gt; för att stoppa den virtuella maskinen.&lt;/p&gt;</translation>
     </message>
 </context>
 <context>
