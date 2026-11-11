@@ -428,7 +428,7 @@
     </message>
     <message>
         <source>Show &amp;Log...</source>
-        <translation>Visa lo&amp;gg...</translation>
+        <translation>Visa &amp;logg...</translation>
     </message>
     <message>
         <source>Take Sn&amp;apshot...</source>
@@ -484,7 +484,7 @@
     </message>
     <message>
         <source>&amp;VirtualBox Web Site...</source>
-        <translation>&amp;VirtualBox webbplats...</translation>
+        <translation>&amp;VirtualBox-webbplats...</translation>
     </message>
     <message>
         <source>&amp;Reset All Warnings</source>
@@ -496,7 +496,7 @@
     </message>
     <message>
         <source>Rena&amp;me Group...</source>
-        <translation>Byt na&amp;mn på grupp...</translation>
+        <translation>Byt na&amp;mn på gruppen...</translation>
     </message>
     <message>
         <source>&amp;New Machine...</source>
@@ -532,7 +532,7 @@
     </message>
     <message>
         <source>&amp;Insert Guest Additions CD image...</source>
-        <translation>Mata &amp;in CD-avbildning för gästtillägg...</translation>
+        <translation>Mata &amp;in cd-avbildning för gästtillägg...</translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -602,27 +602,27 @@
     </message>
     <message>
         <source>&amp;VirtualBox Bug Tracker...</source>
-        <translation>&amp;VirtualBox felhanterare...</translation>
+        <translation>&amp;VirtualBox felrapporteringssystem...</translation>
     </message>
     <message>
         <source>Open the browser and go to the VirtualBox product bug tracker</source>
-        <translation>Öppna webbläsaren och gå till VirtualBox felhanterare</translation>
+        <translation>Öppna webbläsaren och gå till VirtualBox felrapporteringssystem</translation>
     </message>
     <message>
         <source>&amp;VirtualBox Forums...</source>
-        <translation>&amp;VirtualBox forum...</translation>
+        <translation>&amp;VirtualBox-forum...</translation>
     </message>
     <message>
         <source>Open the browser and go to the VirtualBox product forums</source>
-        <translation>Öppna webbläsaren och gå till VirtualBox produktforum</translation>
+        <translation>Öppna webbläsaren och gå till VirtualBox-forumet</translation>
     </message>
     <message>
         <source>&amp;Oracle Web Site...</source>
-        <translation>&amp;Oracles webbsida...</translation>
+        <translation>&amp;Oracle-webbplats...</translation>
     </message>
     <message>
         <source>Open the browser and go to the Oracle web site</source>
-        <translation>Öppna webbläsaren och gå till Oracles webbsida</translation>
+        <translation>Öppna webbläsaren och gå till Oracle-webbplatsen</translation>
     </message>
     <message>
         <source>Display a window with product information</source>
@@ -630,7 +630,7 @@
     </message>
     <message>
         <source>Display the global preferences window</source>
-        <translation>Visa globala inställningsfönstret</translation>
+        <translation>Visa fönstret Globala inställningar</translation>
     </message>
     <message>
         <source>&amp;Log</source>
@@ -674,7 +674,7 @@
     </message>
     <message>
         <source>Save selected virtual machine log</source>
-        <translation>Spara markerade loggar för virtuell maskin</translation>
+        <translation>Spara vald logg för virtuell maskin</translation>
     </message>
     <message>
         <source>File Manager</source>
