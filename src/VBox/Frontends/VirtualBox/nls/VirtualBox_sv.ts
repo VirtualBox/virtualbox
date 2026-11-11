@@ -12183,7 +12183,7 @@
     </message>
     <message>
         <source>Adding cloud VM ...</source>
-        <translation>Lägger till virtuell molnmaskin ...</translation>
+        <translation>Lägger till molnmaskin ...</translation>
     </message>
     <message>
         <source>&lt;b&gt;Provider:&lt;/b&gt; %1&lt;br&gt;&lt;b&gt;Profile:&lt;/b&gt; %2&lt;br&gt;&lt;b&gt;Instance Name:&lt;/b&gt; %3</source>
@@ -12191,7 +12191,7 @@
     </message>
     <message>
         <source>Creating cloud VM ...</source>
-        <translation>Skapar virtuell molnmaskin ...</translation>
+        <translation>Skapar molnmaskin ...</translation>
     </message>
     <message>
         <source>&lt;b&gt;Provider:&lt;/b&gt; %1&lt;br&gt;&lt;b&gt;Profile:&lt;/b&gt; %2&lt;br&gt;&lt;b&gt;VM Name:&lt;/b&gt; %3</source>
@@ -12199,39 +12199,39 @@
     </message>
     <message>
         <source>Deleting cloud VM files ...</source>
-        <translation>Tar bort filer för virtuell molnmaskin ...</translation>
+        <translation>Tar bort filer för molnmaskin ...</translation>
     </message>
     <message>
         <source>Removing cloud VM ...</source>
-        <translation>Tar bort virtuell molnmaskin ...</translation>
+        <translation>Tar bort molnmaskin ...</translation>
     </message>
     <message>
         <source>Powering cloud VM up ...</source>
-        <translation>Startar upp virtuell molnmaskin ...</translation>
+        <translation>Startar molnmaskin ...</translation>
     </message>
     <message>
         <source>Powering cloud VM off ...</source>
-        <translation>Stänger av virtuell molnmaskin ...</translation>
+        <translation>Stänger av molnmaskin ...</translation>
     </message>
     <message>
         <source>Shutting cloud VM down ...</source>
-        <translation>Stänger av virtuell molnmaskin ...</translation>
+        <translation>Stänger av molnmaskin ...</translation>
     </message>
     <message>
         <source>Terminating cloud VM ...</source>
-        <translation>Avslutar virtuell molnmaskin ...</translation>
+        <translation>Avslutar molnmaskin ...</translation>
     </message>
     <message>
         <source>Creating cloud VM settings form ...</source>
-        <translation>Skapar inställningsformulär för virtuell molnmaskin ...</translation>
+        <translation>Skapar inställningsformulär för molnmaskin ...</translation>
     </message>
     <message>
         <source>&lt;b&gt;Cloud VM Name:&lt;/b&gt; %1</source>
-        <translation>&lt;b&gt;Namn på virtuell molnmaskin:&lt;/b&gt; %1</translation>
+        <translation>&lt;b&gt;Namn på molnmaskin:&lt;/b&gt; %1</translation>
     </message>
     <message>
         <source>Applying cloud VM settings form ...</source>
-        <translation>Tillämpar inställningsformulär för virtuell molnmaskin ...</translation>
+        <translation>Tillämpar inställningsformulär för molnmaskin ...</translation>
     </message>
     <message>
         <source>Creating cloud console connection ...</source>
@@ -12299,7 +12299,7 @@
     </message>
     <message>
         <source>Set VSD form value ...</source>
-        <translation>Ställ in VSD-formulärvärde ...</translation>
+        <translation>Anger VSD-formulärvärde ...</translation>
     </message>
     <message>
         <source>&lt;b&gt;Value:&lt;/b&gt; %1</source>
@@ -12315,7 +12315,7 @@
     </message>
     <message>
         <source>Cloning cloud VM ...</source>
-        <translation>Klonar virtuell molnmaskin ...</translation>
+        <translation>Klonar molnmaskin ...</translation>
     </message>
     <message>
         <source>Launch VM ...</source>
@@ -12323,7 +12323,7 @@
     </message>
     <message>
         <source>Resetting cloud VM ...</source>
-        <translation>Startar om virtuell molnmaskin ...</translation>
+        <translation>Startar om molnmaskin ...</translation>
     </message>
     <message>
         <source>Creating host-only network interface ...</source>
