@@ -11154,7 +11154,7 @@
     </message>
     <message>
         <source>Descriptive name to uniquely identify the virtual machine</source>
-        <translation>Beskrivande namn för att unikt identifiera den virtuella maskinen</translation>
+        <translation>Ett beskrivande namn som identifierar den virtuella maskinen entydigt</translation>
     </message>
     <message>
         <source>Storage location for virtual machine files</source>
@@ -11162,7 +11162,7 @@
     </message>
     <message>
         <source>Edition of guest operating system to install</source>
-        <translation>Utgåva av gästoperativsystem att installera</translation>
+        <translation>Gästoperativsystemets utgåva som ska installeras</translation>
     </message>
     <message>
         <source>Operating system, for example Linux, Windows</source>
@@ -11170,11 +11170,11 @@
     </message>
     <message>
         <source>OS distribution, if applicable</source>
-        <translation>OS-distribution, om tillgängligt</translation>
+        <translation>OS-distribution, om tillämpligt</translation>
     </message>
     <message>
         <source>Version of OS</source>
-        <translation>Version av OS</translation>
+        <translation>OS-version</translation>
     </message>
     <message>
         <source>ISO image to be attached to the virtual machine and possibly used in unattended install</source>
@@ -11360,7 +11360,7 @@
     </message>
     <message>
         <source>&amp;Port Forwarding</source>
-        <translation>Omdirigering av &amp;portar</translation>
+        <translation>&amp;Portomdirigering</translation>
     </message>
     <message>
         <source>Displays a window to configure port forwarding rules.</source>
@@ -11404,15 +11404,15 @@
     </message>
     <message>
         <source>Virtual &amp;Cable Connected</source>
-        <translation>Virtuell &amp;kabel ansluten</translation>
+        <translation>&amp;Virtuell kabel ansluten</translation>
     </message>
     <message>
         <source>Virtual network cable will be plugged in</source>
-        <translation>Virtuell nätverkskabel kommer att anslutas</translation>
+        <translation>Den virtuella nätverkskabeln ansluts</translation>
     </message>
     <message>
         <source>Configure port forwarding rules</source>
-        <translation>Konfigurera portregler för vidarebefordring</translation>
+        <translation>Konfigurera regler för portomdirigering</translation>
     </message>
 </context>
 <context>
@@ -13001,7 +13001,7 @@
     <name>UISerialSettingsEditor</name>
     <message>
         <source>&amp;Enable Serial Port</source>
-        <translation>&amp;Aktivera serieport</translation>
+        <translation>&amp;Aktivera seriell port</translation>
     </message>
     <message>
         <source>When checked, enables the given serial port of the virtual machine.</source>
@@ -13041,7 +13041,7 @@
     </message>
     <message>
         <source>&amp;Connect to existing pipe/socket</source>
-        <translation>&amp;Anslut till befintligt rör/uttag</translation>
+        <translation>&amp;Anslut till befintligt rör eller uttag</translation>
     </message>
     <message>
         <source>When checked, the virtual machine will assume that the pipe or socket specified in the Path/Address field exists and try to use it. Otherwise, the pipe or socket will be created by the virtual machine when it starts.</source>
@@ -13065,7 +13065,7 @@
     </message>
     <message>
         <source>Serial port number. You can choose one of the standard serial ports or select User-defined and specify port parameters manually.</source>
-        <translation>Nummer för serieport. Du kan välja en av de vanliga serieportarna eller välja Användardefinierad och ange portparametrar manuellt.</translation>
+        <translation>Seriellt portnummer. Du kan välja en av de vanliga serieportarna eller välja Användardefinierad och ange portparametrar manuellt.</translation>
     </message>
     <message>
         <source>&amp;IRQ</source>
@@ -13259,7 +13259,7 @@
     </message>
     <message>
         <source>Apply the changes and close this dialog</source>
-        <translation>Tillämpa ändringarna och stäng denna dialog</translation>
+        <translation>Tillämpa ändringarna och stäng dialogrutan</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -13343,7 +13343,7 @@
     </message>
     <message>
         <source>This shared folder will be available to all VMs</source>
-        <translation>Denna delade mapp kommer att vara tillgänglig för alla virtuella maskiner</translation>
+        <translation>Den här delade mappen kommer att vara tillgänglig för alla virtuella maskiner</translation>
     </message>
 </context>
 <context>
