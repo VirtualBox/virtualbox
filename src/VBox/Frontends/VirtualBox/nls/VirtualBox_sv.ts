@@ -6877,11 +6877,11 @@
     <name>UIHotKeyEditor</name>
     <message>
         <source>Reset shortcut to default</source>
-        <translation>Återställ kortkommando till standardvärdet</translation>
+        <translation>Återställ kortkommandot till standardvärdet</translation>
     </message>
     <message>
         <source>Unset shortcut</source>
-        <translation>Ta bort kortkommando</translation>
+        <translation>Rensa kortkommandot</translation>
     </message>
 </context>
 <context>
