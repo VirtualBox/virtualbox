@@ -5414,7 +5414,7 @@
     <name>UIDetailsView</name>
     <message>
         <source>Contains a list of Virtual Machine details.</source>
-        <translation>Innehåller en lista över virtuella maskindetaljer.</translation>
+        <translation>Innehåller en lista med information om virtuella maskiner.</translation>
     </message>
 </context>
 <context>
