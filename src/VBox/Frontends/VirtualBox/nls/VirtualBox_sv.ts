@@ -15343,7 +15343,7 @@
     </message>
     <message>
         <source>Reset to Defaults</source>
-        <translation>Återställ standardvärden</translation>
+        <translation>Återställ standardinställningarna</translation>
     </message>
     <message>
         <source>Show Pie Charts</source>
