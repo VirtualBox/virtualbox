@@ -6657,7 +6657,7 @@
     </message>
     <message>
         <source>Home</source>
-        <translation>Hem</translation>
+        <translation>Startsida</translation>
     </message>
     <message>
         <source>Backward</source>
@@ -6673,7 +6673,7 @@
     </message>
     <message>
         <source>Find a String in the Current Page</source>
-        <translation>Sök efter en sträng på den aktuella sidan</translation>
+        <translation>Sök efter text på den aktuella sidan</translation>
     </message>
     <message>
         <source>Bookmark added:</source>
@@ -6682,7 +6682,7 @@
     <message>
         <source>%1 User Guide</source>
         <comment>[Product Name] User Guide</comment>
-        <translation>%1 Användarguide</translation>
+        <translation>%1 användarhandbok</translation>
     </message>
     <message>
         <source>&lt;div&gt;&lt;p&gt;&lt;h3&gt;Not found.&lt;/h3&gt;The page &lt;b&gt;%1&lt;/b&gt; could not be found.&lt;/p&gt;&lt;/div&gt;</source>
