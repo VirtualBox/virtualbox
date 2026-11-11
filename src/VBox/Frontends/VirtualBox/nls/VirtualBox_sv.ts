@@ -5493,7 +5493,7 @@
     <name>UIDiskVariantWidget</name>
     <message>
         <source>Pre-allocate &amp;Full Size</source>
-        <translation>Förallokera &amp;fullständig storlek</translation>
+        <translation>Förallokera hela &amp;storleken</translation>
     </message>
     <message>
         <source>When checked, the virtual disk image is allocated with its full size during VM creation time</source>
@@ -5815,7 +5815,7 @@
     </message>
     <message>
         <source>Floppy Disk Creator</source>
-        <translation>Skapa diskett</translation>
+        <translation>Diskettskapare</translation>
     </message>
     <message>
         <source>File &amp;Path:</source>
@@ -8001,7 +8001,7 @@
     </message>
     <message>
         <source>Enter the search term and press Enter/Return</source>
-        <translation>Ange söktermen och tryck på Enter/Return</translation>
+        <translation>Ange söktermen och tryck på Enter/Retur</translation>
     </message>
     <message>
         <source>Navigates to the previous item matching the search term</source>
@@ -15343,7 +15343,7 @@
     </message>
     <message>
         <source>Reset to Defaults</source>
-        <translation>Återställ till standard</translation>
+        <translation>Återställ standardvärden</translation>
     </message>
     <message>
         <source>Show Pie Charts</source>
@@ -15398,15 +15398,15 @@
     </message>
     <message>
         <source>CPU Guest</source>
-        <translation>CPU-gäst</translation>
+        <translation>Gäst-CPU</translation>
     </message>
     <message>
         <source>CPU VMM</source>
-        <translation>CPU VMM</translation>
+        <translation>VMM-CPU</translation>
     </message>
     <message>
         <source>RAM Used/Total</source>
-        <translation>RAM använt/totalt</translation>
+        <translation>Använt/totalt RAM</translation>
     </message>
     <message>
         <source>RAM %</source>
@@ -15430,19 +15430,19 @@
     </message>
     <message>
         <source>Disk Read Rate</source>
-        <translation>Frekvens för diskläsning</translation>
+        <translation>Diskläshastighet</translation>
     </message>
     <message>
         <source>Disk Write Rate</source>
-        <translation>Frekvens för diskskrivning</translation>
+        <translation>Diskskrivhastighet</translation>
     </message>
     <message>
         <source>Disk Read Total</source>
-        <translation>Total diskläsning</translation>
+        <translation>Totalt läst från disk</translation>
     </message>
     <message>
         <source>Disk Write Total</source>
-        <translation>Total diskskrivning</translation>
+        <translation>Totalt skrivet till disk</translation>
     </message>
     <message>
         <source>VM Exits</source>
@@ -15490,7 +15490,7 @@
     </message>
     <message>
         <source>Show Cloud Virtual Machines</source>
-        <translation>Visa virtuella molnmaskiner</translation>
+        <translation>Visa molnmaskiner</translation>
     </message>
     <message>
         <source>Network Upload Rate</source>
@@ -17313,11 +17313,11 @@
     </message>
     <message>
         <source>Please choose the type of file that you would like to use for the new virtual hard disk. If you do not need to use it with other virtualization software you can leave this setting unchanged.</source>
-        <translation>Välj den typ av fil som du vill använda för den nya virtuella hårddisken. Om du inte behöver använda den med andra virtualiseringsprogram så kan du lämna denna inställning oförändrad.</translation>
+        <translation>Välj filtyp för den nya virtuella hårddisken. Om du inte behöver använda den med andra virtualiseringsprogram kan du lämna inställningen oförändrad.</translation>
     </message>
     <message>
         <source>Storage on physical hard disk</source>
-        <translation>Lagring på fysisk hårddisk</translation>
+        <translation>Lagring på den fysiska hårddisken</translation>
     </message>
     <message>
         <source>Please choose whether the new virtual hard disk file should grow as it is used (dynamically allocated) or if it should be created at its maximum size (fixed size).</source>
