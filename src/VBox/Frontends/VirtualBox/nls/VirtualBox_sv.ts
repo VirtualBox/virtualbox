@@ -7321,7 +7321,7 @@
     </message>
     <message>
         <source>Inaccessible</source>
-        <translation>Oåtkomlig</translation>
+        <translation>Inte tillgänglig</translation>
     </message>
 </context>
 <context>
