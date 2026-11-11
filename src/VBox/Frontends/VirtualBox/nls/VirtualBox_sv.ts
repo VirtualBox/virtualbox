@@ -1002,7 +1002,7 @@
     </message>
     <message>
         <source>Open the Virtual Media Manager</source>
-        <translation>Öppna virtuell mediahanterare</translation>
+        <translation>Öppna Hanteraren för virtuella medier</translation>
     </message>
     <message>
         <source>&amp;Cloud Profile Manager</source>
@@ -2110,7 +2110,7 @@
     </message>
     <message>
         <source>Remove Inaccessible Media</source>
-        <translation>Ta bort oåtkomliga media</translation>
+        <translation>Ta bort oåtkomliga medier</translation>
     </message>
     <message>
         <source>&amp;Online Documentation...</source>
@@ -2118,7 +2118,7 @@
     </message>
     <message>
         <source>Remove all inaccessible media</source>
-        <translation>Ta bort alla oåtkomliga media</translation>
+        <translation>Ta bort alla oåtkomliga medier</translation>
     </message>
     <message>
         <source>Display the log viewer window</source>
@@ -2414,11 +2414,11 @@
     </message>
     <message>
         <source>Edit selected media</source>
-        <translation>Redigera valt media</translation>
+        <translation>Redigera valt medium</translation>
     </message>
     <message>
         <source>Edit Media</source>
-        <translation>Redigera media</translation>
+        <translation>Redigera medier</translation>
     </message>
     <message>
         <source>Resource Use</source>
@@ -2959,7 +2959,7 @@
     </message>
     <message>
         <source>Closes this dialog without resetting the guest or mounting a medium</source>
-        <translation>Stänger denna dialog utan att starta om gästen eller montera ett media</translation>
+        <translation>Stänger den här dialogen utan att starta om gästen eller montera ett medium</translation>
     </message>
     <message>
         <source>&amp;Mount and Retry Boot</source>
@@ -7882,7 +7882,7 @@
     </message>
     <message>
         <source>Choose the location of this medium</source>
-        <translation>Välj en plats för detta media</translation>
+        <translation>Välj en plats för det här mediet</translation>
     </message>
     <message>
         <source>Help</source>
@@ -7946,7 +7946,7 @@
     </message>
     <message>
         <source>Cannot change medium size from &lt;b&gt;%1&lt;/b&gt; to &lt;b&gt;%2&lt;/b&gt; as storage shrinking is currently not implemented.</source>
-        <translation>Kan inte ändra mediastorlek från &lt;b&gt;%1&lt;/b&gt; till &lt;b&gt;%2&lt;/b&gt; eftersom minskning av lagring inte är implementerat för tillfället.</translation>
+        <translation>Det går inte att ändra mediets storlek från &lt;b&gt;%1&lt;/b&gt; till &lt;b&gt;%2&lt;/b&gt;, eftersom minskning av lagring inte stöds ännu.</translation>
     </message>
     <message>
         <source>This type of medium is attached directly or indirectly, preserved when taking snapshots.</source>
@@ -8606,7 +8606,7 @@
     </message>
     <message>
         <source>&lt;p&gt;Note that the storage unit of this medium will not be deleted and that it will be possible to use it later again.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Observera att lagringsenheten för denna media inte kommer att tas bort och att den kommer att kunna användas igen senare.&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Observera att lagringsenheten för det här mediet inte tas bort och kan användas igen senare.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>Open network configuration?</source>
@@ -8935,7 +8935,7 @@
     </message>
     <message>
         <source>Check inaccessible media?</source>
-        <translation>Kontrollera oåtkomliga media?</translation>
+        <translation>Kontrollera oåtkomliga medier?</translation>
     </message>
     <message>
         <source>Ignore</source>
@@ -9159,7 +9159,7 @@
     </message>
     <message>
         <source>&lt;p&gt;One or more disk image files are not currently accessible. As a result, you will not be able to operate virtual machines that use these files until they become accessible later.&lt;/p&gt;&lt;p&gt;Press &lt;b&gt;Check&lt;/b&gt; to open the Virtual Media Manager window and see which files are inaccessible, or press &lt;b&gt;Ignore&lt;/b&gt; to ignore this message.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;En eller flera diskavbildningsfiler är för närvarande inte tillgängliga. Som ett resultat av detta kommer du inte kunna hantera virtuella maskiner som använder dessa filer tills de har blivit åtkomliga.&lt;/p&gt;&lt;p&gt;Tryck på &lt;b&gt;Kontrollera&lt;/b&gt; för att öppna fönstret för virtuell mediahanterare och se vilka filer som inte är åtkomliga, eller tryck på &lt;b&gt;Ignorera&lt;/b&gt; för att ignorera detta meddelande.&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;En eller flera diskavbildningsfiler är inte tillgängliga. Du kan inte hantera virtuella maskiner som använder filerna förrän de är åtkomliga igen.&lt;/p&gt;&lt;p&gt;Tryck på &lt;b&gt;Kontrollera&lt;/b&gt; för att öppna Hanteraren för virtuella medier och se vilka filer som inte är åtkomliga, eller på &lt;b&gt;Ignorera&lt;/b&gt; för att ignorera meddelandet.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&lt;p&gt;You are about to start all of the following virtual machines:&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;&lt;p&gt;This could take some time and consume a lot of host system resources. Do you wish to proceed?&lt;/p&gt;</source>
