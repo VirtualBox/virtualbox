@@ -3045,11 +3045,11 @@
     </message>
     <message>
         <source>&amp;Chipset</source>
-        <translation>&amp;Chipset</translation>
+        <translation>&amp;Kretsuppsättning</translation>
     </message>
     <message>
         <source>Emulated chipset type</source>
-        <translation>Emulerad typ av chipset</translation>
+        <translation>Emulerad kretsuppsättning</translation>
     </message>
 </context>
 <context>
@@ -3155,7 +3155,7 @@
     </message>
     <message>
         <source>Enter a search term to be used during virtual machine search</source>
-        <translation>Ange en sökterm att användas under sökning efter virtuell maskin</translation>
+        <translation>Ange en sökterm att använda vid sökning efter virtuella maskiner</translation>
     </message>
     <message>
         <source>Close the search widget</source>
@@ -3166,14 +3166,14 @@
     <name>UIChooserView</name>
     <message>
         <source>Contains a tree of Virtual Machines and their groups</source>
-        <translation>Innehåller ett träd av virtuella maskiner och deras grupper</translation>
+        <translation>Innehåller ett träd med virtuella maskiner och deras grupper</translation>
     </message>
 </context>
 <context>
     <name>UICloudConsoleManager</name>
     <message>
         <source>Cloud Console Manager</source>
-        <translation>Konsoll för molnhantering</translation>
+        <translation>Molnkonsollhanterare</translation>
     </message>
     <message>
         <source>Reset</source>
@@ -3225,31 +3225,31 @@
     </message>
     <message>
         <source>Enter a name for this console application...</source>
-        <translation>Ange ett namn för detta konsollprogram...</translation>
+        <translation>Ange ett namn för detta konsolprogram...</translation>
     </message>
     <message>
         <source>Enter a path for this console application...</source>
-        <translation>Ange en sökväg för detta konsollprogram...</translation>
+        <translation>Ange en sökväg för detta konsolprogram...</translation>
     </message>
     <message>
         <source>Enter an argument for this console application...</source>
-        <translation>Ange ett argument för detta konsollprogram...</translation>
+        <translation>Ange ett argument för detta konsolprogram...</translation>
     </message>
     <message>
         <source>Enter a name for this console profile...</source>
-        <translation>Ange ett namn för denna konsollprofil...</translation>
+        <translation>Ange ett namn för denna konsolprofil...</translation>
     </message>
     <message>
         <source>Enter an argument for this console profile...</source>
-        <translation>Ange ett argument för denna konsollprofil...</translation>
+        <translation>Ange ett argument för denna konsolprofil...</translation>
     </message>
     <message>
         <source>Reset changes in current console details</source>
-        <translation>Nollställ detaljändringar i aktuell konsoll</translation>
+        <translation>Nollställ detaljändringar i aktuell konsol</translation>
     </message>
     <message>
         <source>Apply changes in current console details</source>
-        <translation>Tillämpa detaljändringar i aktuell konsoll</translation>
+        <translation>Tillämpa detaljändringar i aktuell konsol</translation>
     </message>
     <message>
         <source>Add Application</source>
@@ -3406,7 +3406,7 @@
     </message>
     <message>
         <source>Selects the color theme. It can be Light, Dark or automatically detected (default).</source>
-        <translation>Väljer färgtemat. Det kan vara ljus, mörk eller automatiskt upptäckt (standard).</translation>
+        <translation>Väljer färgtema. Det kan vara ljust, mörkt eller identifieras automatiskt (standard).</translation>
     </message>
 </context>
 <context>
@@ -3414,7 +3414,7 @@
     <message>
         <source>Powered Off</source>
         <comment>MachineState</comment>
-        <translation>Nerstängd</translation>
+        <translation>Avstängd</translation>
     </message>
     <message>
         <source>Saved</source>
@@ -3784,7 +3784,7 @@
     <message>
         <source>Host-only Adapter</source>
         <comment>NetworkAttachmentType</comment>
-        <translation>Endast värd-kort</translation>
+        <translation>Endast-värd-nätverkskort</translation>
     </message>
     <message>
         <source>Generic Driver</source>
@@ -4184,7 +4184,7 @@
     <message>
         <source>virtio-scsi Port %1</source>
         <comment>StorageSlot</comment>
-        <translation>virtio-scsi port %1</translation>
+        <translation>virtio-scsi-port %1</translation>
     </message>
     <message>
         <source>General</source>
@@ -4389,7 +4389,7 @@
     <message>
         <source>VMDK (Virtual Machine Disk)</source>
         <comment>UIMediumFormat</comment>
-        <translation>VMDK (Virtuell maskin-disk)</translation>
+        <translation>VMDK (virtuell maskin-disk)</translation>
     </message>
     <message>
         <source>VHD (Virtual Hard Disk)</source>
@@ -4483,7 +4483,7 @@
     <message>
         <source>Aborted-Saved</source>
         <comment>MachineState</comment>
-        <translation>Avbruten-Sparad</translation>
+        <translation>Avbruten och sparad</translation>
     </message>
     <message>
         <source>None</source>
@@ -4903,7 +4903,7 @@
     <message>
         <source>Chipset Type</source>
         <comment>details (system)</comment>
-        <translation>Chipset-typ</translation>
+        <translation>Kretsuppsättningstyp</translation>
     </message>
     <message>
         <source>EFI</source>
@@ -4948,7 +4948,7 @@
     <message>
         <source>Acceleration</source>
         <comment>details (system)</comment>
-        <translation>Acceleration</translation>
+        <translation>Maskinvaruacceleration</translation>
     </message>
     <message>
         <source>Video Memory</source>
@@ -5057,7 +5057,7 @@
     <message>
         <source>Host-only Adapter, &apos;%1&apos;</source>
         <comment>details (network)</comment>
-        <translation>Endast-värd-adapter, &apos;%1&apos;</translation>
+        <translation>Endast-värd-nätverkskort, &apos;%1&apos;</translation>
     </message>
     <message>
         <source>Generic Driver, &apos;%1&apos;</source>
@@ -5326,7 +5326,7 @@
     <message>
         <source>Host-only Adapter</source>
         <comment>details (network)</comment>
-        <translation>Endast värd-nätkort</translation>
+        <translation>Endast-värd-nätverkskort</translation>
     </message>
     <message>
         <source>Generic Driver</source>
@@ -5462,7 +5462,7 @@
     </message>
     <message>
         <source>Encrypt the disks attached to this VM</source>
-        <translation>Kryptera diskarna anslutna till denna VM</translation>
+        <translation>Kryptera diskarna som är anslutna till den här virtuella maskinen</translation>
     </message>
     <message>
         <source>Disk Encryption C&amp;ipher</source>
@@ -5470,7 +5470,7 @@
     </message>
     <message>
         <source>Cipher type used to encrypt the disks</source>
-        <translation>Chiffertyp att använd för att kryptera diskarna</translation>
+        <translation>Chiffertyp som används för att kryptera diskarna</translation>
     </message>
     <message>
         <source>E&amp;nter New Encryption Password</source>
@@ -5478,7 +5478,7 @@
     </message>
     <message>
         <source>Password to access disks attached to this VM</source>
-        <translation>Lösenord för att komma åt diskar anslutna till denna VM</translation>
+        <translation>Lösenord för att komma åt diskar som är anslutna till den här virtuella maskinen</translation>
     </message>
     <message>
         <source>C&amp;onfirm New Encryption Password</source>
@@ -5513,7 +5513,7 @@
     </message>
     <message>
         <source>&amp;Split Disk Into 2 GB Parts</source>
-        <translation>&amp;Dela upp disk i delar om 2 GB</translation>
+        <translation>&amp;Dela upp disken i delar om 2 GB</translation>
     </message>
     <message>
         <source>The virtual hard disk file is split into 2 GB parts</source>
@@ -7703,7 +7703,7 @@
     </message>
     <message>
         <source>Failed to check accessibility of disk image files.</source>
-        <translation>Misslyckades med att kontrollera tillgängliga diskavbildningsfiler.</translation>
+        <translation>Det gick inte att kontrollera åtkomsten till diskavbildningsfiler.</translation>
     </message>
     <message>
         <source>&lt;b&gt;No disk image file selected&lt;/b&gt;</source>
@@ -7719,11 +7719,11 @@
     </message>
     <message>
         <source>You can create or add disk image files in the virtual machine settings.</source>
-        <translation>Du kan skapa eller lägga till diskavbildningsfiler i inställningarna för virtuella maskinen.</translation>
+        <translation>Du kan skapa eller lägga till diskavbildningsfiler i den virtuella maskinens inställningar.</translation>
     </message>
     <message>
         <source>Attaching this hard disk will be performed indirectly using a newly created differencing hard disk.</source>
-        <translation>Anslutning av denna hårddisk kommer att genomföras indirekt med en nyligen skapad skiljande hårddisk.</translation>
+        <translation>Hårddisken ansluts indirekt med en ny differenshårddisk.</translation>
     </message>
     <message>
         <source>Encrypted</source>
@@ -7741,16 +7741,16 @@
     </message>
     <message>
         <source>This base hard disk is indirectly attached using the following differencing hard disk:</source>
-        <translation>Denna bashårddisk är indirekt ansluten med följande skiljande hårddisk:</translation>
+        <translation>Den här bashårddisken är indirekt ansluten med följande differenshårddisk:</translation>
     </message>
     <message>
         <source>Differencing</source>
         <comment>medium</comment>
-        <translation>Skiljer sig</translation>
+        <translation>Differens</translation>
     </message>
     <message>
         <source>Some of the files in this hard disk chain are inaccessible. Please use the Virtual Media Manager to inspect these files.</source>
-        <translation>Några av filerna i denna hårddiskkedja är otillgängliga. Använd Virtuell mediahanterare för att inspektera dessa filer.</translation>
+        <translation>Några av filerna i den här hårddiskkedjan är otillgängliga. Använd Hanteraren för virtuella medier för att granska filerna.</translation>
     </message>
 </context>
 <context>
@@ -7838,7 +7838,7 @@
     </message>
     <message>
         <source>Virtual Media Manager</source>
-        <translation>Hanterare för virtuella media</translation>
+        <translation>Hanteraren för virtuella medier</translation>
     </message>
     <message>
         <source>Reset</source>
@@ -7922,23 +7922,23 @@
     </message>
     <message>
         <source>Holds the type of this medium.</source>
-        <translation>Innehåller typen för detta media.</translation>
+        <translation>Anger typen av medium.</translation>
     </message>
     <message>
         <source>Holds the location of this medium.</source>
-        <translation>Håller platsen för detta media.</translation>
+        <translation>Anger platsen för mediet.</translation>
     </message>
     <message>
         <source>Choose Medium Location</source>
-        <translation>Välj plats för media</translation>
+        <translation>Välj plats för mediet</translation>
     </message>
     <message>
         <source>Holds the description of this medium.</source>
-        <translation>Håller beskrivningen av detta media.</translation>
+        <translation>Anger beskrivningen av mediet.</translation>
     </message>
     <message>
         <source>Holds the size of this medium.</source>
-        <translation>Innehåller storleken för detta media.</translation>
+        <translation>Anger mediets storlek.</translation>
     </message>
     <message>
         <source>Location cannot be empty.</source>
@@ -7950,27 +7950,27 @@
     </message>
     <message>
         <source>This type of medium is attached directly or indirectly, preserved when taking snapshots.</source>
-        <translation>Denna typ av media är anslutet direkt eller indirekt, behålls när ögonblicksbilder tas.</translation>
+        <translation>Den här typen av medium är ansluten direkt eller indirekt och behålls när ögonblicksbilder tas.</translation>
     </message>
     <message>
         <source>This type of medium is attached indirectly, changes are wiped out the next time the virtual machine is started.</source>
-        <translation>Denna typ av media är ansluten indirekt, ändringar tas bort nästa gång som den virtuella maskinen startas.</translation>
+        <translation>Den här typen av medium är indirekt ansluten. Ändringar tas bort nästa gång den virtuella maskinen startas.</translation>
     </message>
     <message>
         <source>This type of medium is attached directly, ignored when taking snapshots.</source>
-        <translation>Denna typ av media är ansluten direkt, ignoreras när ögonblicksbilder tas.</translation>
+        <translation>Den här typen av medium är direkt ansluten och ignoreras när ögonblicksbilder tas.</translation>
     </message>
     <message>
         <source>This type of medium is attached directly, allowed to be used concurrently by several machines.</source>
-        <translation>Denna typ av media är ansluten direkt, tillåter att användas samtidigt av flera maskiner.</translation>
+        <translation>Den här typen av medium är direkt ansluten och kan användas samtidigt av flera maskiner.</translation>
     </message>
     <message>
         <source>This type of medium is attached directly, and can be used by several machines.</source>
-        <translation>Denna typ av media är ansluten direkt och kan användas av flera maskiner.</translation>
+        <translation>Den här typen av medium är direkt ansluten och kan användas av flera maskiner.</translation>
     </message>
     <message>
         <source>This type of medium is attached indirectly, so that one base medium can be used for several VMs which have their own differencing medium to store their modifications.</source>
-        <translation>Denna typ av media är ansluten indirekt så att ett basmedia kan användas för flera virtuella maskiner som har sina egna skiljande media för att lagra sina ändringar.</translation>
+        <translation>Den här typen av medium är indirekt ansluten, så att ett basmedium kan användas av flera virtuella maskiner med egna differensmedier för sina ändringar.</translation>
     </message>
     <message>
         <source>Registered hard drives</source>
