@@ -15517,7 +15517,7 @@
     </message>
     <message>
         <source>You want to:</source>
-        <translation>Du vill:</translation>
+        <translation>Vad vill du göra?</translation>
     </message>
     <message>
         <source>&lt;p&gt;Saves the current execution state of the virtual machine to the physical hard disk of the host PC.&lt;/p&gt;&lt;p&gt;Next time this machine is started, it will be restored from the saved state and continue execution from the same place you saved it at, which will let you continue your work immediately.&lt;/p&gt;&lt;p&gt;Note that saving the machine state may take a long time, depending on the guest operating system type and the amount of memory you assigned to the virtual machine.&lt;/p&gt;</source>
@@ -15557,7 +15557,7 @@
     </message>
     <message>
         <source>&lt;p&gt;Close the virtual machine windows but keep the virtual machine running.&lt;/p&gt;&lt;p&gt;You can use the VirtualBox Manager to return to running the virtual machine in a window.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Stäng det virtuella maskinfönstret  men håll den virtuella maskinen igång.&lt;/p&gt;&lt;p&gt;Du kan använda Hanterare för VirtualBox för att återgå till att köra den virtuella maskinen i ett fönster.&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Stäng fönstren för den virtuella maskinen men håll den virtuella maskinen igång.&lt;/p&gt;&lt;p&gt;Du kan använda VirtualBox-hanteraren för att återgå till att köra den virtuella maskinen i ett fönster.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&lt;p&gt;Sends the ACPI power button press event to the virtual machine.&lt;/p&gt;&lt;p&gt;Normally, the guest operating system running inside the virtual machine will detect this event and perform a clean shutdown procedure. This is a recommended way to turn off the virtual machine because all applications running inside it will get a chance to save their data and state.&lt;/p&gt;&lt;p&gt;If the machine doesn&apos;t respond to this action then the guest operating system may be misconfigured or doesn&apos;t understand ACPI power button events at all. In this case you should select the &lt;b&gt;Power off the machine&lt;/b&gt; action to stop virtual machine execution.&lt;/p&gt;</source>
