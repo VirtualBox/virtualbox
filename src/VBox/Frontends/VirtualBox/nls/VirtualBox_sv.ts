@@ -6877,11 +6877,11 @@
     <name>UIHotKeyEditor</name>
     <message>
         <source>Reset shortcut to default</source>
-        <translation>Återställ genväg till standard</translation>
+        <translation>Återställ kortkommando till standardvärdet</translation>
     </message>
     <message>
         <source>Unset shortcut</source>
-        <translation>Nollställ genväg</translation>
+        <translation>Ta bort kortkommando</translation>
     </message>
 </context>
 <context>
@@ -13650,7 +13650,7 @@
     </message>
     <message>
         <source>English Name</source>
-        <translation>Engelska</translation>
+        <translation>Engelskt namn</translation>
     </message>
     <message>
         <source>Name of the Layout in English</source>
@@ -13666,19 +13666,19 @@
     </message>
     <message>
         <source>Scan Code</source>
-        <translation>Tangentkod</translation>
+        <translation>Skanningskod</translation>
     </message>
     <message>
         <source>The scan code the key produces. Not editable</source>
-        <translation>Den scancode som tangenten producerar. Inte redigeringsbar</translation>
+        <translation>Den skanningskod som tangenten ger. Kan inte redigeras.</translation>
     </message>
     <message>
         <source>Position</source>
-        <translation>Position</translation>
+        <translation>Placering</translation>
     </message>
     <message>
         <source>The physical position of the key. Not editable</source>
-        <translation>Fysiska positionen för tangenten. Inte redigerbar</translation>
+        <translation>Tangentens fysiska placering. Kan inte redigeras.</translation>
     </message>
     <message>
         <source>Base</source>
@@ -13698,7 +13698,7 @@
     </message>
     <message>
         <source>Captions</source>
-        <translation>Bildtexter</translation>
+        <translation>Tangenttexter</translation>
     </message>
     <message>
         <source>Selected Key</source>
@@ -13706,7 +13706,7 @@
     </message>
     <message>
         <source>Use the selected layout</source>
-        <translation>Använd markerad layout</translation>
+        <translation>Använd den markerade layouten</translation>
     </message>
     <message>
         <source>Edit the selected layout</source>
