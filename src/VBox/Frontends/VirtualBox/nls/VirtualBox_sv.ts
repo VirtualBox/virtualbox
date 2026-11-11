@@ -456,11 +456,11 @@
     </message>
     <message>
         <source>Open the browser and go to the VirtualBox product web site</source>
-        <translation>Öppna webbläsaren och gå till VirtualBox produktwebbplats</translation>
+        <translation>Öppna webbläsaren och gå till VirtualBox-webbplatsen</translation>
     </message>
     <message>
         <source>Go back to showing all suppressed warnings and messages</source>
-        <translation>Gör att alla tysta varningar och meddelanden visas igen</translation>
+        <translation>Visa alla undertryckta varningar och meddelanden igen</translation>
     </message>
     <message>
         <source>Check for a new VirtualBox version</source>
@@ -1246,7 +1246,7 @@
     </message>
     <message>
         <source>Enable menu-bar</source>
-        <translation>Aktivera menyrad</translation>
+        <translation>Aktivera menyraden</translation>
     </message>
     <message>
         <source>&amp;Status Bar</source>
@@ -1266,7 +1266,7 @@
     </message>
     <message>
         <source>Enable status-bar</source>
-        <translation>Aktivera statusrad</translation>
+        <translation>Aktivera statusraden</translation>
     </message>
     <message>
         <source>&amp;Input</source>
@@ -1452,7 +1452,7 @@
     </message>
     <message>
         <source>Try Oracle cloud for free</source>
-        <translation>Prova Oracle cloud gratis</translation>
+        <translation>Prova Oracle Cloud gratis</translation>
     </message>
     <message>
         <source>Try Oracle Cloud for Free</source>
