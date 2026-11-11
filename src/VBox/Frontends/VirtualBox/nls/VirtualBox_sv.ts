@@ -16856,7 +16856,7 @@
     </message>
     <message>
         <source>Appliance settings</source>
-        <translation>Inställningar för appliance</translation>
+        <translation>Appliance-inställningar</translation>
     </message>
     <message>
         <source>Appliance</source>
@@ -16876,7 +16876,7 @@
     </message>
     <message>
         <source>Write in legacy OVF 0.9 format for compatibility with other virtualization products.</source>
-        <translation>Skriv i det äldre formatet OVF 0.9 för kompatibilitet med andra virtualiseringsprodukter.</translation>
+        <translation>Skriv i det äldre OVF 0.9-formatet för kompatibilitet med andra virtualiseringsprodukter.</translation>
     </message>
     <message>
         <source>Create a Manifest file for automatic data integrity checks on import.</source>
@@ -16884,11 +16884,11 @@
     </message>
     <message>
         <source>This is the descriptive information which will be added to the virtual appliance.  You can change it by double clicking on individual lines.</source>
-        <translation>Detta är en beskrivande information som kommer att läggas till i virtuell appliance.  Du kan ändra den genom att dubbelklicka på individuella rader.</translation>
+        <translation>Detta är den beskrivande information som läggs till i den virtuella appliancen. Du kan ändra den genom att dubbelklicka på enskilda rader.</translation>
     </message>
     <message>
         <source>Please choose a file to export the virtual appliance to</source>
-        <translation>Välj en fil att exportera virtuell appliance till</translation>
+        <translation>Välj en fil att exportera den virtuella appliancen till</translation>
     </message>
     <message>
         <source>F&amp;ormat:</source>
@@ -16912,7 +16912,7 @@
     </message>
     <message>
         <source>Write in new OVF 2.0 format.</source>
-        <translation>Skriv i nya OVF 2.0-formatet.</translation>
+        <translation>Skriv i det nya OVF 2.0-formatet.</translation>
     </message>
     <message>
         <source>&lt;p&gt;Please choose a format to export the virtual appliance to.&lt;/p&gt;&lt;p&gt;The &lt;b&gt;Open Virtualization Format&lt;/b&gt; supports only &lt;b&gt;ovf&lt;/b&gt; or &lt;b&gt;ova&lt;/b&gt; extensions. If you use the &lt;b&gt;ovf&lt;/b&gt; extension, several files will be written separately. If you use the &lt;b&gt;ova&lt;/b&gt; extension, all the files will be combined into one Open Virtualization Format archive.&lt;/p&gt;&lt;p&gt;The &lt;b&gt;Oracle Cloud Infrastructure&lt;/b&gt; format supports exporting to remote cloud servers only. Main virtual disk of each selected machine will be uploaded to remote server.&lt;/p&gt;</source>
@@ -16952,11 +16952,11 @@
     </message>
     <message>
         <source>Strip all network adapter MAC addresses from exported appliance archive.</source>
-        <translation>Ta bort alla nätverkskorts hårdvaruadresser i exporterat appliance-arkiv.</translation>
+        <translation>Ta bort alla nätverkskorts hårdvaruadresser från det exporterade appliance-arkivet.</translation>
     </message>
     <message>
         <source>Additionally:</source>
-        <translation>Ytterligare:</translation>
+        <translation>Dessutom:</translation>
     </message>
     <message>
         <source>&amp;Write Manifest file</source>
@@ -16972,7 +16972,7 @@
     </message>
     <message>
         <source>Machine Creation:</source>
-        <translation>Maskinskapande:</translation>
+        <translation>Skapa maskin:</translation>
     </message>
     <message>
         <source>Ask me about it &amp;after exporting disk as custom image</source>
@@ -16984,7 +16984,7 @@
     </message>
     <message>
         <source>This is the descriptive information which will be used to determine settings for a cloud storage your VM being exported to.  You can change it by double clicking on individual lines.</source>
-        <translation>Detta är en beskrivande information som kommer att användas för att fastställa inställningar för en molnlagring som din virtuella maskin exporteras till.  Du kan ändra den genom att dubbelklicka på individuella rader.</translation>
+        <translation>Detta är den beskrivande information som används för att fastställa inställningar för molnlagringen som din virtuella maskin ska exporteras till. Du kan ändra den genom att dubbelklicka på enskilda rader.</translation>
     </message>
     <message>
         <source>Virtual &amp;machines</source>
@@ -16992,7 +16992,7 @@
     </message>
     <message>
         <source>Format &amp;settings</source>
-        <translation>Format&amp;inställningar</translation>
+        <translation>&amp;Formatinställningar</translation>
     </message>
     <message>
         <source>&amp;Appliance settings</source>
@@ -17020,11 +17020,11 @@
     </message>
     <message>
         <source>Please choose one of cloud service profiles you have registered to export virtual machines to. It will be used to establish network connection required to upload your virtual machine files to a remote cloud facility.</source>
-        <translation>Välj en av molntjänstprofilerna som du har registrerat att exportera virtuella maskiner till. Den kommer att användas för att etablera en nätverksanslutning som krävs för att skicka upp dina virtuella maskinfiler till ett fjärrmoln.</translation>
+        <translation>Välj en av molntjänstprofilerna som du har registrerat för export av virtuella maskiner. Den används för att upprätta nätverksanslutningen som krävs för att överföra dina virtuella maskinfiler till en fjärransluten molntjänst.</translation>
     </message>
     <message>
         <source>Please choose a filename to export the virtual appliance to. Besides that you can specify a certain amount of options which affects the size and content of resulting archive.</source>
-        <translation>Välj ett filnamn att exportera den virtuella appliancen till. Förutom det kan du ange en viss mängd alternativ som påverkar storleken och innehållet för det resulterande arkivet.</translation>
+        <translation>Välj ett filnamn att exportera den virtuella appliancen till. Du kan dessutom ange alternativ som påverkar storleken och innehållet i det resulterande arkivet.</translation>
     </message>
     <message>
         <source>Contains a list of Virtual Machines</source>
@@ -17040,14 +17040,14 @@
     </message>
     <message>
         <source>Opens cloud profile manager...</source>
-        <translation>Öppnar hanteraren för molnprofil...</translation>
+        <translation>Öppnar hanteraren för molnprofiler...</translation>
     </message>
 </context>
 <context>
     <name>UIWizardImportApp</name>
     <message>
         <source>Appliance to import</source>
-        <translation>Appliance att importera</translation>
+        <translation>Appliance som ska importeras</translation>
     </message>
     <message>
         <source>Open Virtualization Format (%1)</source>
@@ -17055,11 +17055,11 @@
     </message>
     <message>
         <source>Appliance settings</source>
-        <translation>Inställningar för appliance</translation>
+        <translation>Appliance-inställningar</translation>
     </message>
     <message>
         <source>These are the virtual machines contained in the appliance and the suggested settings of the imported VirtualBox machines. You can change many of the properties shown by double-clicking on the items and disable others using the check boxes below.</source>
-        <translation>Detta är de virtuella maskiner som finns i denna appliance och de föredragna inställningarna för de importerade VirtualBox-maskinerna. Du kan ändra flera av egenskaperna som visas genom att dubbelklicka på objekten och inaktivera andra via kryssrutorna nedan.</translation>
+        <translation>Detta är de virtuella maskiner som finns i den här appliancen och de föreslagna inställningarna för de importerade VirtualBox-maskinerna. Du kan ändra flera av egenskaperna som visas genom att dubbelklicka på objekten och inaktivera andra via kryssrutorna nedan.</translation>
     </message>
     <message>
         <source>Import Virtual Appliance</source>
@@ -17135,7 +17135,7 @@
     </message>
     <message>
         <source>Please choose the source to import appliance from.  This can be a local file system to import OVF archive or one of known cloud service providers to import cloud VM from.</source>
-        <translation>Välj källan att importera appliance från.  Detta kan vara ett lokalt filsystem för att importera OVF-arkiv eller en av de kända molntjänstleverantörerna att importera virtuella molnmaskiner från.</translation>
+        <translation>Välj källan att importera appliancen från. Det kan vara ett lokalt filsystem för import av OVF-arkiv eller en känd molntjänstleverantör för import av virtuella molnmaskiner.</translation>
     </message>
     <message>
         <source>&amp;Source:</source>
@@ -17195,11 +17195,11 @@
     </message>
     <message>
         <source>Please choose one of cloud service profiles you have registered to import virtual machine from.  Corresponding machines list will be updated.  To continue, select one of machines to import below.</source>
-        <translation>Välj en av molntjänstprofilerna som du har registrerat för att importera virtuell maskin från.  Motsvarande maskinlista kommer att uppdateras.  Välj en av maskinerna att importera nedan för att fortsätta.</translation>
+        <translation>Välj en av molntjänstprofilerna som du har registrerat för import av virtuella maskiner. Motsvarande maskinlista uppdateras. Välj en av maskinerna att importera nedan för att fortsätta.</translation>
     </message>
     <message>
         <source>Please choose a file to import the virtual appliance from.  VirtualBox currently supports importing appliances saved in the Open Virtualization Format (OVF).  To continue, select the file to import below.</source>
-        <translation>Välj en fil att importera den virtuella appliancen från.  VirtualBox har för närvarande stöd för att importera appliances sparade i Open Virtualization Format (OVF).  Välj filen att importera nedan för att fortsätta.</translation>
+        <translation>Välj en fil att importera den virtuella appliancen från. VirtualBox har för närvarande stöd för att importera appliances som har sparats i Open Virtualization Format (OVF). Välj filen att importera nedan för att fortsätta.</translation>
     </message>
     <message>
         <source>Selects cloud profile.</source>
