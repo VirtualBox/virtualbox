@@ -7997,7 +7997,7 @@
     </message>
     <message>
         <source>Select the search type</source>
-        <translation>Välj söktypen</translation>
+        <translation>Välj typ av sökning</translation>
     </message>
     <message>
         <source>Enter the search term and press Enter/Return</source>
