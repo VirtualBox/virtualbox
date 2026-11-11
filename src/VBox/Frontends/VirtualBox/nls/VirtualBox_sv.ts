@@ -6440,7 +6440,7 @@
     <name>UIGuestProcessControlWidget</name>
     <message>
         <source>Session/Process ID</source>
-        <translation>Sessions-/process-id</translation>
+        <translation>Sessions-/process-ID</translation>
     </message>
     <message>
         <source>Session Name/Process Command</source>
@@ -6459,7 +6459,7 @@
     </message>
     <message>
         <source>Process Id</source>
-        <translation>Process-id</translation>
+        <translation>Process-ID</translation>
     </message>
     <message>
         <source>Process Status</source>
@@ -6467,7 +6467,7 @@
     </message>
     <message>
         <source>Executable Path</source>
-        <translation>Sökväg för körbar fil</translation>
+        <translation>Sökväg till körbar fil</translation>
     </message>
     <message>
         <source>Arguments</source>
@@ -6482,7 +6482,7 @@
     </message>
     <message>
         <source>Session Id</source>
-        <translation>Sessions-id</translation>
+        <translation>Sessions-ID</translation>
     </message>
     <message>
         <source>Session Status</source>
@@ -6561,11 +6561,11 @@
     </message>
     <message>
         <source>Show &amp;Side Bar</source>
-        <translation>Visa &amp;sidorad</translation>
+        <translation>Visa &amp;sidofält</translation>
     </message>
     <message>
         <source>Show &amp;Tool Bar</source>
-        <translation>Visa &amp;verktygrad</translation>
+        <translation>Visa &amp;verktygsfält</translation>
     </message>
     <message>
         <source>Show St&amp;atus Bar</source>
@@ -6585,15 +6585,15 @@
     </message>
     <message>
         <source>&amp;Find in Page</source>
-        <translation>Sö&amp;k i sida</translation>
+        <translation>Sö&amp;k på sidan</translation>
     </message>
     <message>
         <source>Find Ne&amp;xt</source>
-        <translation>Hitta &amp;nästa</translation>
+        <translation>Sök &amp;nästa</translation>
     </message>
     <message>
         <source>Find &amp;Previous</source>
-        <translation>Hitta &amp;föregående</translation>
+        <translation>Sök &amp;föregående</translation>
     </message>
     <message>
         <source>Go Backward</source>
@@ -6641,7 +6641,7 @@
     </message>
     <message>
         <source>Reload the Current Page</source>
-        <translation>Uppdatera aktuella sidan</translation>
+        <translation>Uppdatera den aktuella sidan</translation>
     </message>
     <message>
         <source>Go Forward to Next Page</source>
@@ -8111,7 +8111,7 @@
     </message>
     <message>
         <source>Hard Disk File Location and Size</source>
-        <translation>Hårddiskens filplats och storlek</translation>
+        <translation>Hårddiskfilens plats och storlek</translation>
     </message>
     <message>
         <source>Specify a location for new virtual hard disk file...</source>
@@ -8123,7 +8123,7 @@
     </message>
     <message>
         <source>Select the size of the virtual hard disk in megabytes. This size is the limit on the amount of file data that a virtual machine will be able to store on the hard disk.</source>
-        <translation>Välj storleken för den virtuella hårddisken i megabyte. Denna storlek är gränsen för den mängd av fildata som en virtuell maskin kan lagra på hårddisken.</translation>
+        <translation>Välj storleken på den virtuella hårddisken i megabyte. Den här storleken begränsar mängden fildata som en virtuell maskin kan lagra på hårddisken.</translation>
     </message>
     <message>
         <source>Disk file path does not exists</source>
@@ -8178,7 +8178,7 @@
     </message>
     <message>
         <source>Disk size set to %1</source>
-        <translation>Diskstorlek inställd till %1</translation>
+        <translation>Diskstorleken har ställts in på %1</translation>
     </message>
 </context>
 <context>
@@ -8221,7 +8221,7 @@
     </message>
     <message>
         <source>Remove Disk From Virtual Drive</source>
-        <translation>Ta bort disk från virtuell enhet</translation>
+        <translation>Ta bort skivan från den virtuella enheten</translation>
     </message>
 </context>
 <context>
