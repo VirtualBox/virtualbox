@@ -5827,7 +5827,7 @@
     </message>
     <message>
         <source>Sets the size of the floppy disk.</source>
-        <translation>Ställer in storleken för disketten.</translation>
+        <translation>Anger diskettens storlek.</translation>
     </message>
     <message>
         <source>&amp;Format disk as FAT12</source>
@@ -5843,7 +5843,7 @@
     </message>
     <message>
         <source>Create the disk and close this dialog.</source>
-        <translation>Skapa disketten och stäng denna dialog.</translation>
+        <translation>Skapa disketten och stäng den här dialogrutan.</translation>
     </message>
     <message>
         <source>Cancel</source>
