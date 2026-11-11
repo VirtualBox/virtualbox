@@ -14854,7 +14854,7 @@
     </message>
     <message>
         <source>Vendor ID filter. The exact match string format is &apos;XXXX&apos; where &apos;X&apos; is a hexadecimal digit. An empty string will match any value.</source>
-        <translation>Filter för tillverkar-id. Det exakt matchande strängformatet är ’XXXX’, där ’X’ är en hexadecimal siffra. En tom sträng matchar alla värden.</translation>
+        <translation>Filter för tillverkar-ID. Det exakt matchande strängformatet är ’XXXX’, där ’X’ är en hexadecimal siffra. En tom sträng matchar alla värden.</translation>
     </message>
     <message>
         <source>&amp;Product ID</source>
@@ -14862,7 +14862,7 @@
     </message>
     <message>
         <source>Product ID filter. The exact match string format is &apos;XXXX&apos; where &apos;X&apos; is a hexadecimal digit. An empty string will match any value.</source>
-        <translation>Filter för produkt-id. Det exakt matchande strängformatet är ”XXXX”, där ”X” är en hexadecimal siffra. En tom sträng matchar alla värden.</translation>
+        <translation>Filter för produkt-ID. Det exakt matchande strängformatet är ”XXXX”, där ”X” är en hexadecimal siffra. En tom sträng matchar alla värden.</translation>
     </message>
     <message>
         <source>&amp;Revision</source>
@@ -14910,7 +14910,7 @@
     </message>
     <message>
         <source>Coverage of the USB filter. Defines whether it&apos;s applied to devices attached locally to the host computer (No), to a VRDP client&apos;s computer (Yes), or both (Any).</source>
-        <translation>USB-filtrets räckvidd. Anger om det tillämpas på enheter som är anslutna lokalt till värddatorn (Nej), till en VRDP-klients dator (Ja) eller båda (Alla).</translation>
+        <translation>USB-filtrets omfattning. Anger om filtret gäller enheter anslutna lokalt till värddatorn (Nej), enheter anslutna till en VRDP-klients dator (Ja) eller båda (Alla).</translation>
     </message>
 </context>
 <context>
