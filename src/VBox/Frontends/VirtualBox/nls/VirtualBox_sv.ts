@@ -10933,11 +10933,11 @@
     </message>
     <message>
         <source>Show the Mini ToolBar in full-screen and seamless modes</source>
-        <translation>Visa miniverktygsfältet i helskärm- och sömlöst läge</translation>
+        <translation>Visa miniverktygsfältet i helskärmsläge och sömlöst läge</translation>
     </message>
     <message>
         <source>Show the Mini ToolBar at the top of the screen, rather than in its default position at the bottom of the screen</source>
-        <translation>Visa miniverktygsfältet längst upp på skärmen istället för i dess standardposition längst ner på skärmen</translation>
+        <translation>Visa miniverktygsfältet längst upp på skärmen i stället för i dess standardplacering längst ned på skärmen</translation>
     </message>
 </context>
 <context>
@@ -15201,7 +15201,7 @@
     </message>
     <message>
         <source>All New Releases, &amp;Pre-Releases and Testing Builds</source>
-        <translation>Alla nya utgåvor, &amp;förhandsutgåvor och testbyggen</translation>
+        <translation>Alla nya utgåvor, &amp;förhandsutgåvor och testversioner</translation>
     </message>
     <message>
         <source>When chosen, you will be notified about all new VirtualBox releases, pre-release versions and testing builds of VirtualBox.</source>
