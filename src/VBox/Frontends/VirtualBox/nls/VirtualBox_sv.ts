@@ -16568,7 +16568,7 @@
     </message>
     <message>
         <source>Virtual machine visual appearance. If machine is running it will be applied as soon as possible, otherwise desired one will be defined.</source>
-        <translation>Virtuella maskinens utseende. Om maskinen är igång kommer den att tillämpas så snart som möjligt, annars kommer önskat val att definieras.</translation>
+        <translation>Den virtuella maskinens visuella läge. Om maskinen körs tillämpas det så snart som möjligt, annars anges det önskade läget.</translation>
     </message>
 </context>
 <context>
