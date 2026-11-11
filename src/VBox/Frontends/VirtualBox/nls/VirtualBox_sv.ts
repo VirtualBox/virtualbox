@@ -2497,7 +2497,7 @@
     <name>UIAdvancedSettingsDialogGlobal</name>
     <message>
         <source>Allows to navigate through Global Property categories</source>
-        <translation>Tillåter navigering genom globala egenskapskategorier</translation>
+        <translation>Gör det möjligt att navigera mellan kategorierna för globala inställningar.</translation>
     </message>
     <message>
         <source>General</source>
@@ -6357,11 +6357,11 @@
     <name>UIGlobalSettingsInput</name>
     <message>
         <source>Some items have the same shortcuts assigned.</source>
-        <translation>Några objekt har samma tilldelade genvägar.</translation>
+        <translation>Vissa objekt har samma kortkommandon tilldelade.</translation>
     </message>
     <message>
         <source>Host Key Combo</source>
-        <translation>Tangentkombination för värd</translation>
+        <translation>Värdtangentkombination</translation>
     </message>
 </context>
 <context>
@@ -7332,7 +7332,7 @@
     </message>
     <message>
         <source>The VRDE server port value is not currently specified.</source>
-        <translation>Värdet för VRDE-serverport har inte angivits.</translation>
+        <translation>Värdet för VRDE-serverporten har inte angetts.</translation>
     </message>
     <message>
         <source>The VRDE authentication timeout value is not currently specified.</source>
@@ -7348,11 +7348,11 @@
     </message>
     <message>
         <source>The virtual machine is currently assigned less than &lt;b&gt;%1&lt;/b&gt; of video memory which is the minimum amount required to switch to full-screen or seamless mode.</source>
-        <translation>Den virtuella maskinen har för tillfället tilldelats mindre än &lt;b&gt;%1&lt;/b&gt; av grafikminne vilket är den minsta mängden som krävs för att växla till helskärm eller sömlöst läge.</translation>
+        <translation>Den virtuella maskinen har för tillfället tilldelats mindre än &lt;b&gt;%1&lt;/b&gt; av grafikminne vilket är den minsta mängden som krävs för att växla till helskärmsläge eller sömlöst läge.</translation>
     </message>
     <message>
         <source>The virtual machine is set up to use hardware graphics acceleration and the operating system hint is set to Windows Vista or later. For best performance you should set the machine&apos;s video memory to at least &lt;b&gt;%1&lt;/b&gt;.</source>
-        <translation>Den virtuella maskinen är konfigurerad att använda hårdvaruacceleration för grafik och operativsystemet är inställt till Windows Vista eller senare. För bästa prestanda bör du ställa in maskinens grafikminne till minst &lt;b&gt;%1&lt;/b&gt;.</translation>
+        <translation>Den virtuella maskinen är konfigurerad att använda hårdvaruacceleration för grafik och operativsystemtypen är inställd på Windows Vista eller senare. För bästa prestanda bör du ställa in maskinens grafikminne till minst &lt;b&gt;%1&lt;/b&gt;.</translation>
     </message>
     <message>
         <source>Remote Display is currently enabled for this virtual machine. However, this requires the &lt;i&gt;%1&lt;/i&gt; to be installed. Please install the Extension Pack from the VirtualBox download site as otherwise your VM will be started with Remote Display disabled.</source>
@@ -7573,7 +7573,7 @@
     </message>
     <message>
         <source>Only &lt;b&gt;%1&lt;/b&gt; of memory (RAM) configured for the virtual machine. The recommended minimum is &lt;b&gt;%2&lt;/b&gt;. Please consider increasing the RAM size.</source>
-        <translation>Endast &lt;b&gt;%1&lt;/b&gt; minne (RAM) har konfigurerats för den virtuella maskinen. Rekommenderat minimum är &lt;b&gt;%2&lt;/b&gt;. Överväg att öka mängden RAM.</translation>
+        <translation>Endast &lt;b&gt;%1&lt;/b&gt; RAM-minne har konfigurerats för den virtuella maskinen. Rekommenderad minsta mängd är &lt;b&gt;%2&lt;/b&gt;. Överväg att öka mängden RAM.</translation>
     </message>
     <message>
         <source>The USB controller emulation is not currently enabled on the USB page. This is needed to support an emulated USB pointing device. It will be enabled automatically if you confirm your changes.</source>
@@ -7581,7 +7581,7 @@
     </message>
     <message>
         <source>The I/O APIC feature is not currently enabled in the Motherboard section of the System page. This is needed to support more than one virtual processor. It will be enabled automatically if you confirm your changes.</source>
-        <translation>I/O APIC-funktionen är för närvarande inte aktiverad i Moderkort-sektionen för System-sidan. Detta krävs för att ge stöd för fler än en virtuell processor. Den kommer att automatiskt aktiveras om du bekräftar dina ändringar.</translation>
+        <translation>I/O APIC-funktionen är inte aktiverad i avsnittet Moderkort på sidan System. Den krävs för stöd för fler än en virtuell processor och aktiveras automatiskt när du bekräftar ändringarna.</translation>
     </message>
     <message>
         <source>Please consider lowering the number of CPUs assigned to the virtual machine rather than setting the processor execution cap.</source>
