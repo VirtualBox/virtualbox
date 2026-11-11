@@ -12990,11 +12990,11 @@
     </message>
     <message>
         <source>Click to view non-scaled screenshot.</source>
-        <translation>Klicka för att visa den oskalade skärmbilden.</translation>
+        <translation>Klicka för att visa skärmbilden i originalstorlek.</translation>
     </message>
     <message>
         <source>Click to view scaled screenshot.</source>
-        <translation>Klicka för att visa skalad skärmbild.</translation>
+        <translation>Klicka för att visa en skalad skärmbild.</translation>
     </message>
 </context>
 <context>
