@@ -7426,7 +7426,7 @@
     <name>UIMachineSettingsNetwork</name>
     <message>
         <source>No bridged network adapter is currently selected.</source>
-        <translation>Ingen adapter för bryggat nätverk har angivits.</translation>
+        <translation>Ingen adapter för bryggat nätverk har valts.</translation>
     </message>
     <message>
         <source>No internal network name is currently specified.</source>
@@ -7434,11 +7434,11 @@
     </message>
     <message>
         <source>No host-only network adapter is currently selected.</source>
-        <translation>Ingen adapter för endast-värd-nätverk har angivits.</translation>
+        <translation>Ingen adapter för endast-värd-nätverk har valts.</translation>
     </message>
     <message>
         <source>No generic driver is currently selected.</source>
-        <translation>Ingen allmän drivrutin har angivits.</translation>
+        <translation>Ingen allmän drivrutin har valts.</translation>
     </message>
     <message>
         <source>The MAC address must be 12 hexadecimal digits long.</source>
