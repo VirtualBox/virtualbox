@@ -17680,7 +17680,7 @@
     </message>
     <message>
         <source>Lists chosen configuration of the guest system.</source>
-        <translation>Listar vald konfiguration för gästsystemet.</translation>
+        <translation>Visar den valda konfigurationen för gästsystemet.</translation>
     </message>
     <message>
         <source>Guest machine name is valid</source>
@@ -17720,7 +17720,7 @@
     </message>
     <message>
         <source>OS Installation Options</source>
-        <translation>Alternativ för OS-installation</translation>
+        <translation>Alternativ för installation av operativsystem</translation>
     </message>
     <message>
         <source>&amp;Use EFI</source>
@@ -17760,7 +17760,7 @@
     </message>
     <message>
         <source>Virtual machine name cannot be empty</source>
-        <translation>Virtuella maskinnamnet får inte vara tomt</translation>
+        <translation>Namnet på den virtuella maskinen får inte vara tomt</translation>
     </message>
     <message>
         <source>Virtual machine name is valid</source>
@@ -17768,7 +17768,7 @@
     </message>
     <message>
         <source>Virtual machine path is not unique</source>
-        <translation>Sökväg för virtuell maskin är inte unik</translation>
+        <translation>Sökvägen för den virtuella maskinen är inte unik</translation>
     </message>
     <message>
         <source>Set up unattended guest OS installation</source>
@@ -17776,7 +17776,7 @@
     </message>
     <message>
         <source>Enter the information that will be required when the OS is installed.</source>
-        <translation>Ange informationen som krävs när operativsystemet installeras.</translation>
+        <translation>Ange den information som krävs när operativsystemet installeras.</translation>
     </message>
     <message>
         <source>Specify virtual hardware</source>
@@ -17784,7 +17784,7 @@
     </message>
     <message>
         <source>Specify the VM&apos;s hardware. Resources allocated to the VM will not be available to the host when the VM is running.</source>
-        <translation>Ange maskinvaran för den virtuella maskinen. Resurser som allokeras till den virtuella maskinen kommer inte att vara tillgängliga för värden när den virtuella maskinen körs.</translation>
+        <translation>Ange hårdvaran för den virtuella maskinen. Resurser som tilldelas den virtuella maskinen är inte tillgängliga för värden när den virtuella maskinen körs.</translation>
     </message>
     <message>
         <source>Virtual machine name and &amp;operating system</source>
@@ -17836,15 +17836,15 @@
     </message>
     <message>
         <source>Virtual machine name is invalid (possibly empty)</source>
-        <translation>Virtuella maskinnamnet är ogiltigt (kanske tomt)</translation>
+        <translation>Namnet på den virtuella maskinen är ogiltigt, kanske tomt</translation>
     </message>
     <message>
         <source>Virtual Machine Name and Operating System</source>
-        <translation>Namn för virtuell maskin och operativsystem</translation>
+        <translation>Namn på virtuell maskin och operativsystem</translation>
     </message>
     <message>
         <source>VM Name</source>
-        <translation>Namn för virtuell maskin</translation>
+        <translation>Namn på virtuell maskin</translation>
     </message>
     <message>
         <source>VM Folder</source>
@@ -17880,11 +17880,11 @@
     </message>
     <message>
         <source>Hard Disk Size</source>
-        <translation>Storlek för hårddisk</translation>
+        <translation>Hårddiskstorlek</translation>
     </message>
     <message>
         <source>A new VM will be created with the following configuration.</source>
-        <translation>En ny virtuell maskin kommer att skapas med följande konfiguration.</translation>
+        <translation>En ny virtuell maskin skapas med följande konfiguration.</translation>
     </message>
     <message>
         <source>The ISO is attached to the VM, so you can install the OS automatically</source>
