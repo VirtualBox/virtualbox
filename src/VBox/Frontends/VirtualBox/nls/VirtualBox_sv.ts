@@ -1813,7 +1813,7 @@
     </message>
     <message>
         <source>VM Activity Monitor</source>
-        <translation>Övervakare för virtuell maskinaktivitet</translation>
+        <translation>Aktivitetsövervakare för virtuella maskiner</translation>
     </message>
     <message>
         <source>Export the chart data into a text file</source>
@@ -1910,15 +1910,15 @@
     </message>
     <message>
         <source>&amp;Copy Command (serial) for Unix</source>
-        <translation>&amp;Kopiera kommando (serie) för Unix</translation>
+        <translation>&amp;Kopiera kommando för seriell anslutning för Unix</translation>
     </message>
     <message>
         <source>&amp;Copy Command (serial) for Windows</source>
-        <translation>&amp;Kopiera kommando (serie) för Windows</translation>
+        <translation>&amp;Kopiera kommando för seriell anslutning för Windows</translation>
     </message>
     <message>
         <source>Copy console command for serial connection</source>
-        <translation>Kopiera konsolkommando för serieanslutning</translation>
+        <translation>Kopiera konsolkommando för seriell anslutning</translation>
     </message>
     <message>
         <source>&amp;Copy Command (VNC) for Unix</source>
@@ -1946,7 +1946,7 @@
     </message>
     <message>
         <source>&amp;Terminate Cloud Instance...</source>
-        <translation>Stän&amp;g ner molninstans...</translation>
+        <translation>Avsl&amp;uta molninstans...</translation>
     </message>
     <message>
         <source>Terminate cloud instance of selected virtual machines</source>
@@ -1966,7 +1966,7 @@
     </message>
     <message>
         <source>&amp;Extension</source>
-        <translation>&amp;Utökning</translation>
+        <translation>&amp;Tillägg</translation>
     </message>
     <message>
         <source>&amp;Install...</source>
@@ -1974,7 +1974,7 @@
     </message>
     <message>
         <source>Extension Pack Manager</source>
-        <translation>Hantera tilläggspaket</translation>
+        <translation>Hanterare för tilläggspaket</translation>
     </message>
     <message>
         <source>Install extension pack</source>
@@ -2050,7 +2050,7 @@
     </message>
     <message>
         <source>Console &amp;Properties</source>
-        <translation>Konsol&amp;egenskaper</translation>
+        <translation>Egenskaper för &amp;konsol</translation>
     </message>
     <message>
         <source>Open pane with selected cloud console properties</source>
@@ -2094,7 +2094,7 @@
     </message>
     <message>
         <source>Add Item(s) to VISO</source>
-        <translation>Lägg till post(er) till VISO</translation>
+        <translation>Lägg till poster i VISO</translation>
     </message>
     <message>
         <source>Add Disk Image File</source>
@@ -2142,7 +2142,7 @@
     </message>
     <message>
         <source>Open the browser and go to the VirtualBox user guide</source>
-        <translation>Öppna webbläsaren och gå till VirtualBox användarguide</translation>
+        <translation>Öppna webbläsaren och gå till VirtualBox användarhandbok</translation>
     </message>
     <message>
         <source>&amp;Preferences</source>
@@ -2174,11 +2174,11 @@
     </message>
     <message>
         <source>Restore selected item(s)</source>
-        <translation>Återställ markerade post(er)</translation>
+        <translation>Återställ markerade poster</translation>
     </message>
     <message>
         <source>Restore Selected Item(s)</source>
-        <translation>Återställ markerade post(er)</translation>
+        <translation>Återställ markerade poster</translation>
     </message>
     <message>
         <source>Rename Selected VISO File Object</source>
@@ -2218,7 +2218,7 @@
     </message>
     <message>
         <source>Remove Selected Item(s) From VISO</source>
-        <translation>Ta bort markerade post(er) från VISO</translation>
+        <translation>Ta bort markerade poster från VISO</translation>
     </message>
     <message>
         <source>Reset the VISO content</source>
@@ -2314,7 +2314,7 @@
     </message>
     <message>
         <source>Open the Home Screen</source>
-        <translation>Öppna hemskärmen</translation>
+        <translation>Öppna startskärmen</translation>
     </message>
     <message>
         <source>&amp;Machines</source>
@@ -2342,7 +2342,7 @@
     </message>
     <message>
         <source>Create new cloud virtual machine</source>
-        <translation>Skapa en ny virtuell molnmaskin</translation>
+        <translation>Skapa en ny molnmaskin</translation>
     </message>
     <message>
         <source>&amp;Open</source>
@@ -2362,7 +2362,7 @@
     </message>
     <message>
         <source>Open existing cloud virtual machine</source>
-        <translation>Öppna en befintlig virtuell molnmaskin</translation>
+        <translation>Öppna en befintlig molnmaskin</translation>
     </message>
     <message>
         <source>&amp;Open...</source>
@@ -2418,7 +2418,7 @@
     </message>
     <message>
         <source>Edit Media</source>
-        <translation>Redigera medier</translation>
+        <translation>Redigera medium</translation>
     </message>
     <message>
         <source>Resource Use</source>
