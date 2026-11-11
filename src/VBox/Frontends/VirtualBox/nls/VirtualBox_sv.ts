@@ -16351,11 +16351,11 @@
     </message>
     <message>
         <source>Select a virtual machine file</source>
-        <translation>Välj en virtuell maskin-fil</translation>
+        <translation>Välj en fil för virtuell maskin</translation>
     </message>
     <message>
         <source>Virtual machine files (%1)</source>
-        <translation>Virtuella maskin-filer (%1)</translation>
+        <translation>Filer för virtuella maskiner (%1)</translation>
     </message>
     <message>
         <source>Select a destination folder to move the selected virtual machine</source>
@@ -16363,7 +16363,7 @@
     </message>
     <message>
         <source>Show Toolbar Text</source>
-        <translation>Visa verktygsradstext</translation>
+        <translation>Visa text på verktygsfältet</translation>
     </message>
 </context>
 <context>
