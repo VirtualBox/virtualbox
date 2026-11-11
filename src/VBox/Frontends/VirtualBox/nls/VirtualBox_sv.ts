@@ -14273,7 +14273,7 @@
     </message>
     <message>
         <source>Number of ports allocated to the controller. This must always be one greater than the number of ports that can be used.</source>
-        <translation>Antal portar som allokerats till styrkortet. Detta måste alltid vara ett större än antalet portar som kan användas.</translation>
+        <translation>Antal portar som allokerats till styrkortet. Detta måste alltid vara en fler än antalet portar som kan användas.</translation>
     </message>
     <message>
         <source>Allow to use host I/O caching capabilities</source>
@@ -14313,7 +14313,7 @@
     </message>
     <message>
         <source>Type (Format)</source>
-        <translation>Typ (Format)</translation>
+        <translation>Typ (format)</translation>
     </message>
     <message>
         <source>Virtual size</source>
