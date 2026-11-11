@@ -6771,7 +6771,7 @@
     </message>
     <message>
         <source>Alt Gr</source>
-        <translation>AltGr</translation>
+        <translation>Alt Gr</translation>
     </message>
     <message>
         <source>Caps Lock</source>
