@@ -9072,11 +9072,11 @@
     </message>
     <message>
         <source>Install extension pack?</source>
-        <translation>Installera utökningspaketet?</translation>
+        <translation>Installera tilläggspaketet?</translation>
     </message>
     <message>
         <source>Replace extension pack?</source>
-        <translation>Ersätta utökningspaketet?</translation>
+        <translation>Ersätta tilläggspaketet?</translation>
     </message>
     <message>
         <source>&lt;p&gt;An older version of the extension pack is already installed, would you like to upgrade? &lt;p&gt;%1&lt;/p&gt;&lt;p&gt;&lt;table cellpadding=0 cellspacing=5&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Name:&amp;nbsp;&amp;nbsp;&lt;/b&gt;&lt;/td&gt;&lt;td&gt;%2&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;New Version:&amp;nbsp;&amp;nbsp;&lt;/b&gt;&lt;/td&gt;&lt;td&gt;%3&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Current Version:&amp;nbsp;&amp;nbsp;&lt;/b&gt;&lt;/td&gt;&lt;td&gt;%4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Description:&amp;nbsp;&amp;nbsp;&lt;/b&gt;&lt;/td&gt;&lt;td&gt;%5&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/p&gt;</source>
@@ -9110,7 +9110,7 @@
     </message>
     <message>
         <source>This will delete the keyboard layout file as well. Proceed?</source>
-        <translation>Detta kommer även att ta bort tangentbordslayoutfilen. Fortsätta?</translation>
+        <translation>Detta tar även bort tangentbordslayoutfilen. Vill du fortsätta?</translation>
     </message>
     <message>
         <source>Close software keyboard?</source>
@@ -9118,11 +9118,11 @@
     </message>
     <message>
         <source>&lt;p&gt;Following layouts are edited/copied but not saved:&lt;/p&gt;%1&lt;p&gt;Closing this dialog will cause loosing the changes. Proceed?&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Följande layouter redigeras/kopieras men sparas inte:&lt;/p&gt;%1&lt;p&gt;Stängning av denna dialog kommer att innebära att ändringar förloras. Fortsätta?&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Följande layouter redigeras eller kopieras men är inte sparade:&lt;/p&gt;%1&lt;p&gt;Om du stänger dialogrutan går ändringarna förlorade. Vill du fortsätta?&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&lt;b&gt;%1&lt;/b&gt; is an option for the VirtualBox VM runner (VirtualBoxVM) application, not the VirtualBox Manager.</source>
-        <translation>&lt;b&gt;%1&lt;/b&gt; är ett alternativ för programmet VirtualBox VM runner (VirtualBoxVM) inte Hanterare för VirtualBox.</translation>
+        <translation>&lt;b&gt;%1&lt;/b&gt; är ett alternativ för programmet VirtualBox VM Runner (VirtualBoxVM), inte VirtualBox-hanteraren.</translation>
     </message>
     <message>
         <source>&lt;p&gt;You must specify a machine to start, using the command line.&lt;/p&gt;&lt;p&gt;%1&lt;/p&gt;</source>
@@ -9359,11 +9359,11 @@
     </message>
     <message>
         <source>Failed to enable recording for the virtual machine &lt;b&gt;%1&lt;/b&gt;.</source>
-        <translation>Misslyckades med att aktivera inspelning för virtuella maskinen &lt;b&gt;%1&lt;/b&gt;.</translation>
+        <translation>Misslyckades med att aktivera inspelning för den virtuella maskinen &lt;b&gt;%1&lt;/b&gt;.</translation>
     </message>
     <message>
         <source>Failed to disable recording for the virtual machine &lt;b&gt;%1&lt;/b&gt;.</source>
-        <translation>Misslyckades med att inaktivera inspelning för virtuella maskinen &lt;b&gt;%1&lt;/b&gt;.</translation>
+        <translation>Misslyckades med att inaktivera inspelning för den virtuella maskinen &lt;b&gt;%1&lt;/b&gt;.</translation>
     </message>
     <message>
         <source>Failed to connect the network adapter cable of the virtual machine &lt;b&gt;%1&lt;/b&gt;.</source>
@@ -9403,11 +9403,11 @@
     </message>
     <message>
         <source>&lt;p&gt;This controller has devices attached.  You have requested storage bus change to type which supports smaller amount of attached devices.&lt;/p&gt;&lt;p&gt;If you proceed excessive devices will be removed.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Denna kontroller har enheter anslutna.  Du har begärt att lagringsbussen ändras till en typ som har stöd för ett mindre antal anslutna enheter.&lt;/p&gt;&lt;p&gt;Om du fortsätter kommer dessa överflödiga enheter att tas bort.&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Detta styrkort har enheter anslutna. Du har begärt att lagringsbussen ändras till en typ som har stöd för färre anslutna enheter.&lt;/p&gt;&lt;p&gt;Om du fortsätter tas de överflödiga enheterna bort.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&lt;p&gt;The virtual machine execution ran into a non-fatal problem as described below. We suggest that you take appropriate action to prevent the problem from recurring.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Körningen av den virtuella maskinen sprang på ett icke-ödesdigert problem som beskrivs nedan. Vi föreslår att du tar lämpliga åtgärder för att förhindra att problemet händer igen.&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Körningen av den virtuella maskinen stötte på ett fel som inte är allvarligt och som beskrivs nedan. Vidta lämpliga åtgärder för att förhindra att problemet uppstår igen.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>Failed to set global host settings.</source>
