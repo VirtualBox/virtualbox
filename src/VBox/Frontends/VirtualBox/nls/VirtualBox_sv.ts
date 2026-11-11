@@ -14017,7 +14017,7 @@
     </message>
     <message>
         <source>Use Host I/O Cache</source>
-        <translation>Använd in/ut-mellanlagring för värd</translation>
+        <translation>Använd värdens I/O-cache</translation>
     </message>
     <message>
         <source>Selects the slot on the storage controller used by this attachment. The available slots depend on the type of the controller and other attachments on it.</source>
@@ -14045,7 +14045,7 @@
     </message>
     <message>
         <source>&amp;Solid-state Drive</source>
-        <translation>&amp;Solid-State Drive</translation>
+        <translation>&amp;SSD-enhet</translation>
     </message>
     <message>
         <source>When checked, the guest system will see the virtual disk as a hot-pluggable device.</source>
@@ -14173,7 +14173,7 @@
     </message>
     <message>
         <source>Choose or create a virtual hard disk file. The virtual machine will see the data in the file as the contents of the virtual hard disk.</source>
-        <translation>Välj eller skapa en virtuell hårddiskfil. Den virtuella maskinen kommer att se data i filen som innehållet för den virtuella hårddisken.</translation>
+        <translation>Välj eller skapa en virtuell hårddiskfil. Den virtuella maskinen ser data i filen som innehållet på den virtuella hårddisken.</translation>
     </message>
     <message>
         <source>Optical &amp;Drive:</source>
@@ -14181,7 +14181,7 @@
     </message>
     <message>
         <source>Choose a virtual optical disk or a physical drive to use with the virtual drive. The virtual machine will see a disk inserted into the drive with the data in the file or on the disk in the physical drive as its contents.</source>
-        <translation>Välj en virtuell optisk disk eller fysisk enhet att använda med den virtuella enheten. Den virtuella maskinen kommer se en disk inmatad i enheten med datat i filen eller disken i den fysiska enheten som sitt innehåll.</translation>
+        <translation>Välj en virtuell optisk skiva eller en fysisk enhet för den virtuella enheten. Den virtuella maskinen ser en skiva i enheten med data från filen eller från skivan i den fysiska enheten som innehåll.</translation>
     </message>
     <message>
         <source>Floppy &amp;Drive:</source>
@@ -14189,19 +14189,19 @@
     </message>
     <message>
         <source>Choose a virtual floppy disk or a physical drive to use with the virtual drive. The virtual machine will see a disk inserted into the drive with the data in the file or on the disk in the physical drive as its contents.</source>
-        <translation>Välj en virtuell diskett eller en fysisk enhet att använda med den virtuella enheten. Den virtuella maskinen kommer att se en diskett matas in i enheten med data i filen eller på disketten i den fysiska enheten som dess innehåll.</translation>
+        <translation>Välj en virtuell diskett eller en fysisk enhet för den virtuella enheten. Den virtuella maskinen ser en diskett i enheten med data från filen eller från disketten i den fysiska enheten som innehåll.</translation>
     </message>
     <message>
         <source>Choose/Create a Virtual Hard Disk...</source>
-        <translation>Välj/skapa en virtuell hårddisk...</translation>
+        <translation>Välj eller skapa en virtuell hårddisk...</translation>
     </message>
     <message>
         <source>Choose/Create a Virtual Optical Disk...</source>
-        <translation>Välj/skapa en virtuell optisk disk...</translation>
+        <translation>Välj eller skapa en virtuell optisk skiva...</translation>
     </message>
     <message>
         <source>Choose/Create a Virtual Floppy Disk...</source>
-        <translation>Välj/skapa en virtuell diskett...</translation>
+        <translation>Välj eller skapa en virtuell diskett...</translation>
     </message>
     <message>
         <source>&amp;Devices</source>
@@ -14229,11 +14229,11 @@
     </message>
     <message>
         <source>Remove Disk From Virtual Drive</source>
-        <translation>Ta bort disk från virtuell enhet</translation>
+        <translation>Ta bort skivan från den virtuella enheten</translation>
     </message>
     <message>
         <source>&lt;nobr&gt;Expand/Collapse&amp;nbsp;item&lt;/nobr&gt;</source>
-        <translation>&lt;nobr&gt;Fäll&amp;nbsp;in/ut&amp;nbsp;objekt&lt;/nobr&gt;</translation>
+        <translation>&lt;nobr&gt;Fäll&amp;nbsp;ut&amp;nbsp;eller&amp;nbsp;ihop&amp;nbsp;objekt&lt;/nobr&gt;</translation>
     </message>
     <message>
         <source>&lt;nobr&gt;Add&amp;nbsp;hard&amp;nbsp;disk&lt;/nobr&gt;</source>
@@ -14269,7 +14269,7 @@
     </message>
     <message>
         <source>&amp;Port Count</source>
-        <translation>&amp;Portantal</translation>
+        <translation>&amp;Antal portar</translation>
     </message>
     <message>
         <source>Number of ports allocated to the controller. This must always be one greater than the number of ports that can be used.</source>
@@ -14277,11 +14277,11 @@
     </message>
     <message>
         <source>Allow to use host I/O caching capabilities</source>
-        <translation>Tillåt användning av värdens I/O-cachingförmågor</translation>
+        <translation>Tillåt användning av värdens I/O-cache.</translation>
     </message>
     <message>
         <source>Hard &amp;Disk</source>
-        <translation>Hård&amp;disk</translation>
+        <translation>&amp;Hårddisk</translation>
     </message>
     <message>
         <source>Optical &amp;Drive</source>
@@ -14293,15 +14293,15 @@
     </message>
     <message>
         <source>Slot on the storage controller used by this attachment. The available slots depend on the type of the controller and other attachments on it.</source>
-        <translation>Plats på lagringsstyrkortet som används av denna anslutning. De tillgängliga platserna beror på typen av styrkort och andra anslutningar på den.</translation>
+        <translation>Plats på lagringsstyrkortet som används av den här anslutningen. Tillgängliga platser beror på styrkortstypen och övriga anslutningar på styrkortet.</translation>
     </message>
     <message>
         <source>Allow the guest to send ATAPI commands directly to the host-drive which makes it possible to use CD/DVD writers connected to the host inside the VM. Note that writing audio CD inside the VM is not yet supported.</source>
-        <translation>Tillåt gästen att skicka ATAPI-kommandon direkt till värdenheten, vilket gör det möjligt att använda CD-/DVD-brännare som är anslutna till värden inuti den virtuella maskinen. Observera att det ännu inte stöds att skriva ljud-CD-skivor inuti virtuella maskiner.</translation>
+        <translation>Tillåt gästen att skicka ATAPI-kommandon direkt till värdenheten. Då kan CD-/DVD-brännare som är anslutna till värden användas i den virtuella maskinen. Det går ännu inte att skriva ljud-CD-skivor i den virtuella maskinen.</translation>
     </message>
     <message>
         <source>Virtual disk will not be removed when the guest system ejects it</source>
-        <translation>Den virtuella disken tas inte bort när gästsystemet matar ut den</translation>
+        <translation>Den virtuella skivan matas inte ut när gästsystemet matar ut den</translation>
     </message>
     <message>
         <source>Guest system will see the virtual disk as a solid-state device</source>
