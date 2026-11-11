@@ -12967,7 +12967,7 @@
     </message>
     <message>
         <source>Index of virtual monitor guest screen scale factor being defined for</source>
-        <translation>Index för den virtuella gästskärm vars skalningsfaktor anges</translation>
+        <translation>Index för den virtuella gästskärmen vars skalningsfaktor anges</translation>
     </message>
     <message>
         <source>Guest screen scale factor the virtual machine has</source>
