@@ -7149,11 +7149,11 @@
     <name>UIIndicatorOpticalDisks</name>
     <message>
         <source>%1 drives attached</source>
-        <translation>%1 enheter anslutna</translation>
+        <translation>Antal anslutna enheter: %1</translation>
     </message>
     <message>
         <source>%1 images mounted</source>
-        <translation>%1 avbildningar monterade</translation>
+        <translation>Antal monterade avbildningar: %1</translation>
     </message>
 </context>
 <context>
