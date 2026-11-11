@@ -5882,7 +5882,7 @@
     </message>
     <message>
         <source>Working</source>
-        <translation>Fungerar</translation>
+        <translation>Pågår</translation>
     </message>
     <message>
         <source>Paused</source>
@@ -5946,7 +5946,7 @@
     </message>
     <message>
         <source>User name to authenticate session creation</source>
-        <translation>Användarnamn för att autentisera sessionsskapandet</translation>
+        <translation>Användarnamn för att autentisera skapandet av sessionen</translation>
     </message>
     <message>
         <source>User Name</source>
@@ -5954,11 +5954,11 @@
     </message>
     <message>
         <source>Password to authenticate session creation</source>
-        <translation>Lösenord för att autentisera sessionsskapandet</translation>
+        <translation>Lösenord för att autentisera skapandet av sessionen</translation>
     </message>
     <message>
         <source>Close Session</source>
-        <translation>Stäng session</translation>
+        <translation>Stäng sessionen</translation>
     </message>
     <message>
         <source>Total Size</source>
@@ -5970,7 +5970,7 @@
     </message>
     <message>
         <source>File Count</source>
-        <translation>Filantal</translation>
+        <translation>Antal filer</translation>
     </message>
     <message>
         <source>Delete the selected file(s) and/or folder(s)</source>
@@ -5978,7 +5978,7 @@
     </message>
     <message>
         <source>Ask for this confirmation next time</source>
-        <translation>Fråga efter denna bekräftelse nästa gång</translation>
+        <translation>Visa den här bekräftelsen nästa gång</translation>
     </message>
     <message>
         <source>Delete confirmation can be disabled/enabled also from the Options panel.</source>
@@ -6198,11 +6198,11 @@
     </message>
     <message>
         <source>File manager cannot work since the selected guest is not currently running.</source>
-        <translation>Filhanteraren kan inte fungera eftersom den valda gästen inte är igång just nu.</translation>
+        <translation>Filhanteraren kan inte användas eftersom den valda gästen inte är igång just nu.</translation>
     </message>
     <message>
         <source>File manager cannot work since the guest is paused.</source>
-        <translation>Filhanteraren kan inte fungera eftersom gästen är pausad.</translation>
+        <translation>Filhanteraren kan inte användas eftersom gästen är pausad.</translation>
     </message>
     <message>
         <source>Enter a valid user name and password to initiate the file manager.</source>
@@ -6218,11 +6218,11 @@
     </message>
     <message>
         <source>File manager cannot work since no guest additions were detected.</source>
-        <translation>Filhanteraren kan inte fungera eftersom inga gästtillägg upptäcktes.</translation>
+        <translation>Filhanteraren kan inte användas eftersom inga gästtillägg upptäcktes.</translation>
     </message>
     <message>
         <source>File manager cannot work. The guest additions need to be updated.</source>
-        <translation>Filhanteraren kan inte fungera. Gästtilläggen behöver uppdateras.</translation>
+        <translation>Filhanteraren kan inte användas. Gästtilläggen behöver uppdateras.</translation>
     </message>
     <message>
         <source>Preferences</source>
@@ -6246,7 +6246,7 @@
     </message>
     <message>
         <source>Allow setting column widths interactively</source>
-        <translation>Tillåt att ställa in kolumnbredder interaktivt</translation>
+        <translation>Tillåt interaktiv inställning av kolumnbredder</translation>
     </message>
 </context>
 <context>
