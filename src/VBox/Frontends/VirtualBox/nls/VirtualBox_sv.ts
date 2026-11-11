@@ -14349,7 +14349,7 @@
     </message>
     <message>
         <source>All storage controllers for this machine and the virtual images and host drives attached to them</source>
-        <translation>Alla lagringsstyrkort för denna maskin och virtuella avbildningar samt värdenheter anslutna till dem</translation>
+        <translation>Alla lagringsstyrkort för den här maskinen och de virtuella avbildningar och värdenheter som är anslutna till dem</translation>
     </message>
     <message>
         <source>Add controller</source>
@@ -14381,7 +14381,7 @@
     </message>
     <message>
         <source>Add new storage controller</source>
-        <translation>Lägg till nytt lagringsstyrkort</translation>
+        <translation>Lägg till ett nytt lagringsstyrkort</translation>
     </message>
     <message>
         <source>Remove selected storage controller</source>
@@ -14389,7 +14389,7 @@
     </message>
     <message>
         <source>Add new storage attachment</source>
-        <translation>Lägg till ny lagringsanslutning</translation>
+        <translation>Lägg till en ny lagringsanslutning</translation>
     </message>
     <message>
         <source>Remove selected storage attachment</source>
