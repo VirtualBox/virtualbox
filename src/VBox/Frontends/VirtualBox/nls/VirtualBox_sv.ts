@@ -6440,15 +6440,15 @@
     <name>UIGuestProcessControlWidget</name>
     <message>
         <source>Session/Process ID</source>
-        <translation>Sessions/Process-ID</translation>
+        <translation>Sessions-/process-id</translation>
     </message>
     <message>
         <source>Session Name/Process Command</source>
-        <translation>Sessionsnamn/Processkommando</translation>
+        <translation>Sessionsnamn/processkommando</translation>
     </message>
     <message>
         <source>Session/Process Status</source>
-        <translation>Sessions/Processtatus</translation>
+        <translation>Sessions-/processstatus</translation>
     </message>
 </context>
 <context>
@@ -6509,7 +6509,7 @@
     </message>
     <message>
         <source>Find in Page</source>
-        <translation>Sök i sida</translation>
+        <translation>Sök på sidan</translation>
     </message>
     <message>
         <source>Zoom</source>
@@ -6609,7 +6609,7 @@
     </message>
     <message>
         <source>Reload Page</source>
-        <translation>Uppdatera sida</translation>
+        <translation>Uppdatera sidan</translation>
     </message>
     <message>
         <source>Add Bookmark</source>
@@ -6673,7 +6673,7 @@
     </message>
     <message>
         <source>Find a String in the Current Page</source>
-        <translation>Sök efter en sträng i aktuella sidan</translation>
+        <translation>Sök efter en sträng på den aktuella sidan</translation>
     </message>
     <message>
         <source>Bookmark added:</source>
@@ -6712,7 +6712,7 @@
     <name>UIHomePane</name>
     <message>
         <source>&lt;h3&gt;Get started with VirtualBox&lt;/h3&gt;&lt;p&gt;&lt;a href=#configure#&gt;Configure VirtualBox Manager to work with your computer&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#create#&gt;Create a new virtual machine (VM)&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#open#&gt;Open a saved VirtualBox VM&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#import#&gt;Import a VM from open virtualization or cloud formats&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Refer to the &lt;a href=https://docs.oracle.com/en/virtualization/virtualbox/index.html&gt;VirtualBox documentation&lt;/a&gt; or press %1 for help.&lt;/p&gt;&lt;p&gt;Visit &lt;a href=https://www.virtualbox.org&gt;virtualbox.org&lt;/a&gt; to download test builds, access the source code, and more.&lt;/p&gt;</source>
-        <translation>&lt;h3&gt;Kom igång med VirtualBox&lt;/h3&gt;&lt;p&gt;&lt;a href=#configure#&gt;Konfigurera Hanterare för VirtualBox så att det fungerar med din dator&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#create#&gt;Skapa en ny virtuell maskin (VM)&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#open#&gt;Öppna en sparad VirtualBox VM&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#import#&gt;Importera en VM från öppna virtualiserings- eller molnformat&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Se &lt;a href=https://docs.oracle.com/en/virtualization/virtualbox/index.html&gt;VirtualBox-dokumentationen&lt;/a&gt; eller tryck på %1 för hjälp. &lt;/p&gt;&lt;p&gt;Besök &lt;a href=https://www.virtualbox.org&gt;virtualbox.org&lt;/a&gt; för att hämta ner testversioner, få tillgång till källkoden och mycket mer.&lt;/p&gt;</translation>
+        <translation>&lt;h3&gt;Kom igång med VirtualBox&lt;/h3&gt;&lt;p&gt;&lt;a href=#configure#&gt;Konfigurera VirtualBox Manager för att använda datorn&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#create#&gt;Skapa en ny virtuell maskin (VM)&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#open#&gt;Öppna en sparad VirtualBox-VM&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#import#&gt;Importera en VM från öppna virtualiserings- eller molnformat&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Se &lt;a href=https://docs.oracle.com/en/virtualization/virtualbox/index.html&gt;VirtualBox-dokumentationen&lt;/a&gt; eller tryck på %1 för hjälp.&lt;/p&gt;&lt;p&gt;Besök &lt;a href=https://www.virtualbox.org&gt;virtualbox.org&lt;/a&gt; för att hämta testbyggen, få åtkomst till källkoden med mera.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&lt;h3&gt;Please choose Experience Mode!&lt;/h3&gt;By default, the VirtualBox GUI is hiding some options, tools and wizards. &lt;p&gt;The &lt;b&gt;Basic Mode&lt;/b&gt; is intended for those users who are not interested in advanced functionality and prefer a simpler, cleaner interface.&lt;/p&gt;&lt;p&gt;The &lt;b&gt;Expert Mode&lt;/b&gt; is intended for experienced users who wish to utilize all VirtualBox functionality.&lt;/p&gt;&lt;p&gt;You can choose whether you are a beginner or experienced user by selecting required option at the right. This choice can always be changed in Global Preferences or Machine Settings windows.&lt;/p&gt;</source>
@@ -6862,7 +6862,7 @@
     </message>
     <message>
         <source>Host name to be assigned to the virtual machine</source>
-        <translation>Värdnamnet att tilldelas till den virtuella maskinen</translation>
+        <translation>Värdnamnet som ska tilldelas den virtuella maskinen</translation>
     </message>
     <message>
         <source>&amp;Domain Name</source>
@@ -6931,11 +6931,11 @@
     </message>
     <message>
         <source>Input enabled</source>
-        <translation>Inmatning aktiverat</translation>
+        <translation>Inmatning aktiverad</translation>
     </message>
     <message>
         <source>Input disabled</source>
-        <translation>Inmatning inaktiverat</translation>
+        <translation>Inmatning inaktiverad</translation>
     </message>
 </context>
 <context>
@@ -6946,11 +6946,11 @@
     </message>
     <message>
         <source>%1 monitors connected</source>
-        <translation>%1 skärmar anslutna</translation>
+        <translation>Anslutna skärmar: %1</translation>
     </message>
     <message>
         <source>3D acceleration enabled</source>
-        <translation>3D-acceleration aktiverat</translation>
+        <translation>3D-acceleration aktiverad</translation>
     </message>
 </context>
 <context>
@@ -7016,47 +7016,47 @@
     <message>
         <source>Indicates whether the host keyboard is captured by the guest OS:%1</source>
         <comment>Keyboard tooltip</comment>
-        <translation>Indikerar huruvida värdtangentbordet är fångat av gästoperativsystemet: %1</translation>
+        <translation>Anger om gästoperativsystemet fångar värdtangentbordet: %1</translation>
     </message>
     <message>
         <source>Keyboard is not captured</source>
         <comment>Keyboard tooltip</comment>
-        <translation>Tangentbordet är inte fångat</translation>
+        <translation>Tangentbordet fångas inte</translation>
     </message>
     <message>
         <source>Keyboard is captured</source>
         <comment>Keyboard tooltip</comment>
-        <translation>Tangentbordet är fångat</translation>
+        <translation>Tangentbordet fångas</translation>
     </message>
     <message>
         <source>Keyboard is not captured, host-combo being pressed</source>
         <comment>Keyboard tooltip</comment>
-        <translation>Tangentbordet är inte fångat, värdkombination trycks</translation>
+        <translation>Tangentbordet fångas inte, värdtangentkombinationen trycks ned</translation>
     </message>
     <message>
         <source>Keyboard is captured, host-combo being pressed</source>
         <comment>Keyboard tooltip</comment>
-        <translation>Tangentbordet är fångat, värdkombinationen trycks</translation>
+        <translation>Tangentbordet fångas, värdtangentkombinationen trycks ned</translation>
     </message>
     <message>
         <source>Keyboard is not captured, host-combo to be inserted</source>
         <comment>Keyboard tooltip</comment>
-        <translation>Tangentbordet är inte fångat, värdkombination ska infogas</translation>
+        <translation>Tangentbordet fångas inte, värdtangentkombinationen ska infogas</translation>
     </message>
     <message>
         <source>Keyboard is captured, host-combo to be inserted</source>
         <comment>Keyboard tooltip</comment>
-        <translation>Tangentbordet är fångat, värdkombination ska infogas</translation>
+        <translation>Tangentbordet fångas, värdtangentkombinationen ska infogas</translation>
     </message>
     <message>
         <source>Keyboard is not captured, host-combo being pressed and to be inserted</source>
         <comment>Keyboard tooltip</comment>
-        <translation>Tangentbordet är inte fångat, värdkombination trycks och ska infogas</translation>
+        <translation>Tangentbordet fångas inte, värdtangentkombinationen trycks ned och ska infogas</translation>
     </message>
     <message>
         <source>Keyboard is captured, host-combo being pressed and to be inserted</source>
         <comment>Keyboard tooltip</comment>
-        <translation>Tangentbordet är fångat, värdkombinationen trycks och ska infogas</translation>
+        <translation>Tangentbordet fångas, värdtangentkombinationen trycks ned och ska infogas</translation>
     </message>
 </context>
 <context>
@@ -7360,7 +7360,7 @@
     </message>
     <message>
         <source>When checked, enables video recording for screen %1.</source>
-        <translation>När kryssad aktiveras videoinspelning för skärm %1.</translation>
+        <translation>När alternativet är markerat aktiveras videoinspelning för skärm %1.</translation>
     </message>
     <message>
         <source>Re&amp;cording</source>
@@ -7368,11 +7368,11 @@
     </message>
     <message>
         <source>The virtual machine is configured to use 3D acceleration. This will work only if you pick a different graphics controller (%1). Either disable 3D acceleration or switch to required graphics controller type. The latter will be done automatically if you confirm your changes.</source>
-        <translation>Den virtuella maskinen är konfigurerad att använda 3D-acceleration. Detta fungerar endast om du väljer en annan grafikkontroller (%1). Antingen inaktivera 3D-acceleration eller växla till nödvändig grafikkontrollertyp. Den senare kommer att väljas automatiskt om du bekräftar dina ändringar.</translation>
+        <translation>Den virtuella maskinen är konfigurerad för 3D-acceleration. Det fungerar endast med en annan grafikkontroller (%1). Inaktivera 3D-acceleration eller byt till den nödvändiga grafikkontrollertypen. Det senare görs automatiskt när du bekräftar ändringarna.</translation>
     </message>
     <message>
         <source>The virtual machine is configured to use a graphics controller other than the recommended one (%1). Please consider switching unless you have a reason to keep the currently selected graphics controller.</source>
-        <translation>Den virtuella maskinen är konfigurerad att använda en grafikkontroller annan än den som rekommenderas (%1). Överväg att byta såvida inte du har en anledning att behålla den aktuella grafikkontrollern.</translation>
+        <translation>Den virtuella maskinen är konfigurerad med en annan grafikkontroller än den rekommenderade (%1). Överväg att byta om det inte finns skäl att behålla den valda grafikkontrollern.</translation>
     </message>
 </context>
 <context>
@@ -7454,7 +7454,7 @@
     </message>
     <message>
         <source>No cloud network name is currently specified.</source>
-        <translation>Inga molnnätverksnamn är för närvarande angivna.</translation>
+        <translation>Inget namn för molnnätverket har angivits.</translation>
     </message>
     <message>
         <source>Host-only adapters are no longer supported, use host-only networks instead.</source>
@@ -7497,7 +7497,7 @@
     </message>
     <message>
         <source>There are currently duplicate port paths specified.</source>
-        <translation>Den finns dubletter angivna i portsökvägarna.</translation>
+        <translation>Det finns dubbletter bland de angivna portsökvägarna.</translation>
     </message>
 </context>
 <context>
@@ -7509,7 +7509,7 @@
     <message>
         <source>at most one supported</source>
         <comment>controller</comment>
-        <translation>minst en stöds</translation>
+        <translation>högst en stöds</translation>
     </message>
     <message>
         <source>up to %1 supported</source>
@@ -7530,7 +7530,7 @@
     </message>
     <message>
         <source>The machine currently has more storage controllers assigned than a %1 chipset supports. Please change the chipset type on the System settings page or reduce the number of the following storage controllers on the Storage settings page: %2</source>
-        <translation>Maskinen har fler lagringsstyrkort tilldelade än vad ett %1-chipset har stöd för. Ändra typ av chipset i systeminställningarna eller minska antalet av följande lagringsstyrkort i lagringsinställningarna: %2</translation>
+        <translation>Maskinen har fler lagringsstyrkort tilldelade än vad en %1-kretsuppsättning stöder. Ändra kretsuppsättningstypen i systeminställningarna eller minska antalet av följande lagringsstyrkort i lagringsinställningarna: %2</translation>
     </message>
 </context>
 <context>
@@ -7557,11 +7557,11 @@
     </message>
     <message>
         <source>For performance reasons, the number of virtual CPUs attached to the virtual machine may not be more than twice the number of physical CPUs on the host (&lt;b&gt;%1&lt;/b&gt;). Please reduce the number of virtual CPUs.</source>
-        <translation>Av prestandaskäl så får inte antalet virtuella processorer anslutna till den virtuella maskinen vara mer än dubbelt det antal fysiska processorer som värden (&lt;b&gt;%1&lt;/b&gt;) har. Minska därför antalet virtuella processorer.</translation>
+        <translation>Av prestandaskäl får antalet virtuella processorer som tilldelas den virtuella maskinen inte vara mer än dubbelt så stort som antalet fysiska processorer på värden (&lt;b&gt;%1&lt;/b&gt;). Minska antalet virtuella processorer.</translation>
     </message>
     <message>
         <source>More virtual CPUs are assigned to the virtual machine than the number of physical CPUs on the host system (&lt;b&gt;%1&lt;/b&gt;). This is likely to degrade the performance of your virtual machine. Please consider reducing the number of virtual CPUs.</source>
-        <translation>Fler virtuella processorer har tilldelats den virtuella maskinen än antalet fysiska processorer på värdsystemet (&lt;b&gt;%1&lt;/b&gt;). Detta kan ge degraderad prestanda för din virtuella maskin. Överväg att minska antalet virtuella processorer.</translation>
+        <translation>Fler virtuella processorer har tilldelats den virtuella maskinen än antalet fysiska processorer på värdsystemet (&lt;b&gt;%1&lt;/b&gt;). Det försämrar troligen den virtuella maskinens prestanda. Överväg att minska antalet virtuella processorer.</translation>
     </message>
     <message>
         <source>The processor execution cap is set to a low value. This may make the machine feel slow to respond.</source>
@@ -7569,7 +7569,7 @@
     </message>
     <message>
         <source>The I/O APIC feature is not currently enabled in the Motherboard section of the System page. This is needed to support a chipset of type ICH9. It will be enabled automatically if you confirm your changes.</source>
-        <translation>I/O APIC-funktionen är för närvarande inte aktiverad i Moderkort-sektionen för System-sidan. Detta krävs för att ge stöd för ett chipset av typen ICH9. Den kommer att automatiskt aktiveras om du bekräftar dina ändringar.</translation>
+        <translation>I/O APIC-funktionen är inte aktiverad i avsnittet Moderkort på sidan System. Den krävs för stöd för en ICH9-kretsuppsättning och aktiveras automatiskt när du bekräftar ändringarna.</translation>
     </message>
     <message>
         <source>Only &lt;b&gt;%1&lt;/b&gt; of memory (RAM) configured for the virtual machine. The recommended minimum is &lt;b&gt;%2&lt;/b&gt;. Please consider increasing the RAM size.</source>
@@ -7577,7 +7577,7 @@
     </message>
     <message>
         <source>The USB controller emulation is not currently enabled on the USB page. This is needed to support an emulated USB pointing device. It will be enabled automatically if you confirm your changes.</source>
-        <translation>Emulering av USB-kontroller är för närvarande inte aktiverad på USB-sidan. Detta krävs för att ge stöd för en emulerad USB-pekenhet. Detta kommer att automatiskt aktiveras om du bekräftar dina ändringar.</translation>
+        <translation>Emulering av USB-styrkort är inte aktiverad på sidan USB. Den krävs för stöd för en emulerad USB-pekenhet och aktiveras automatiskt när du bekräftar ändringarna.</translation>
     </message>
     <message>
         <source>The I/O APIC feature is not currently enabled in the Motherboard section of the System page. This is needed to support more than one virtual processor. It will be enabled automatically if you confirm your changes.</source>
@@ -7585,11 +7585,11 @@
     </message>
     <message>
         <source>Please consider lowering the number of CPUs assigned to the virtual machine rather than setting the processor execution cap.</source>
-        <translation>Överväg att sänka antalet processorer tilldelade till den virtuella maskinen istället för att inställa in processorns körningsgräns.</translation>
+        <translation>Överväg att minska antalet processorer som tilldelas den virtuella maskinen i stället för att ange processorns körningsgräns.</translation>
     </message>
     <message>
         <source>Lowering the processor execution cap may result in a decline in performance.</source>
-        <translation>Sänkning av processorns körningsgräns kan resultera i en minskning i prestanda.</translation>
+        <translation>En lägre körningsgräns för processorn kan försämra prestandan.</translation>
     </message>
     <message>
         <source>The nested paging is not currently enabled in the Acceleration section of the System page. This is needed to support nested hardware virtualization. It will be enabled automatically if you confirm your changes.</source>
@@ -7600,7 +7600,7 @@
     <name>UIMachineView</name>
     <message>
         <source>Holds the graphical canvas containing guest screen contents.</source>
-        <translation>Innehåller den grafiska kanvasen som innehåller gästskärminnehåll.</translation>
+        <translation>Visar den grafiska ytan med gästskärmens innehåll.</translation>
     </message>
 </context>
 <context>
@@ -7761,7 +7761,7 @@
     </message>
     <message>
         <source>Choose the location of this medium</source>
-        <translation>Välj en plats för detta media</translation>
+        <translation>Välj en plats för det här mediet</translation>
     </message>
     <message>
         <source>%1, %2: %3, %4: %5</source>
@@ -8103,7 +8103,7 @@
     </message>
     <message>
         <source>Holds the location of the virtual disk file.</source>
-        <translation>Innehåller platsen för den virtuella diskfilen.</translation>
+        <translation>Anger platsen för den virtuella diskfilen.</translation>
     </message>
     <message>
         <source>Opens file selection dialog so that a location for the disk file can be selected.</source>
@@ -8115,7 +8115,7 @@
     </message>
     <message>
         <source>Specify a location for new virtual hard disk file...</source>
-        <translation>Ange en plats för nya virtuella hårddiskfilen...</translation>
+        <translation>Ange en plats för den nya virtuella hårddiskfilen...</translation>
     </message>
     <message>
         <source>Please type the name of the new virtual hard disk file into the box below or click on the folder icon to select a different folder to create the file in.</source>
@@ -8127,7 +8127,7 @@
     </message>
     <message>
         <source>Disk file path does not exists</source>
-        <translation>Diskfilsökväg finns inte</translation>
+        <translation>Diskfilsökvägen finns inte</translation>
     </message>
     <message>
         <source>Disk file path is valid</source>
@@ -10898,7 +10898,7 @@
     </message>
     <message>
         <source>Exit Full Screen or Seamless Mode</source>
-        <translation>Avsluta helskämsläge eller sömlöst läge</translation>
+        <translation>Avsluta helskärmsläge eller sömlöst läge</translation>
     </message>
     <message>
         <source>Close VM</source>
@@ -10968,11 +10968,11 @@
     </message>
     <message>
         <source>Minimum virtual monitor number</source>
-        <translation>Minimum antal virtuella skärmar</translation>
+        <translation>Minsta antal virtuella skärmar</translation>
     </message>
     <message>
         <source>Maximum virtual monitor number</source>
-        <translation>Maximum antal virtuella skärmar</translation>
+        <translation>Största antal virtuella skärmar</translation>
     </message>
 </context>
 <context>
@@ -11031,7 +11031,7 @@
     </message>
     <message>
         <source>Use I/O APIC. Performance may be slower.</source>
-        <translation>Använd I/O APIC. Prestandan kan bli försämrad.</translation>
+        <translation>Använd I/O APIC. Prestandan kan bli lägre.</translation>
     </message>
     <message>
         <source>Hardware Clock in &amp;UTC</source>
@@ -11047,7 +11047,7 @@
     </message>
     <message>
         <source>VM uses UEFI to boot OS instead of BIOS</source>
-        <translation>VM använder UEFI för att starta upp OS istället för BIOS</translation>
+        <translation>Den virtuella maskinen använder UEFI för att starta operativsystemet i stället för BIOS</translation>
     </message>
     <message>
         <source>&amp;Secure Boot</source>
@@ -11213,7 +11213,7 @@
     </message>
     <message>
         <source>Commit all wizard data.</source>
-        <translation>Verkställ allt guidedata.</translation>
+        <translation>Verkställ alla guideuppgifter.</translation>
     </message>
     <message>
         <source>&amp;Cancel</source>
@@ -11221,7 +11221,7 @@
     </message>
     <message>
         <source>Cancel wizard execution.</source>
-        <translation>Avbryt guidekörning.</translation>
+        <translation>Avbryt guiden.</translation>
     </message>
 </context>
 <context>
@@ -11380,7 +11380,7 @@
     </message>
     <message>
         <source>Promiscuous mode policy of the network adapter when attached to an internal network, host only network or a bridge</source>
-        <translation>Promiskuöst läge för nätverkskortet när det är anslutet till ett internt nätverk, ett endast-värdnätverk eller en brygga</translation>
+        <translation>Promiskuöst läge för nätverkskortet när det är anslutet till ett internt nätverk, ett endast-värd-nätverk eller en brygga</translation>
     </message>
     <message>
         <source>&amp;MAC Address</source>
@@ -11904,7 +11904,7 @@
     </message>
     <message>
         <source>Url not found on the server</source>
-        <translation>URLen hittades inte på servern</translation>
+        <translation>Webbadressen hittades inte på servern</translation>
     </message>
     <message>
         <source>Connection refused</source>
@@ -11912,7 +11912,7 @@
     </message>
     <message>
         <source>Content moved</source>
-        <translation>Innehållet har flyttat</translation>
+        <translation>Innehållet har flyttats</translation>
     </message>
     <message>
         <source>Proxy not found</source>
@@ -12384,7 +12384,7 @@
     </message>
     <message>
         <source>Type of emulated pointing device</source>
-        <translation>Typ av emulering för pekenhet</translation>
+        <translation>Typ av emulerad pekenhet</translation>
     </message>
 </context>
 <context>
@@ -12433,7 +12433,7 @@
     </message>
     <message>
         <source>Contains a list of port forwarding rules.</source>
-        <translation>Innehåller en regellista över postomdirigeringar.</translation>
+        <translation>Innehåller en lista över regler för portomdirigering.</translation>
     </message>
     <message>
         <source>Add New Rule</source>
@@ -12496,11 +12496,11 @@
     </message>
     <message>
         <source>Nested &amp;VT-x/AMD-V</source>
-        <translation>Nested &amp;VT-x/AMD-V</translation>
+        <translation>Nästlad &amp;VT-x/AMD-V</translation>
     </message>
     <message>
         <source>Use the nested hardware virtualization CPU feature on the virtual machine</source>
-        <translation>Använd nästlad CPU-funktion för hårdvaruvirtualisering på virtuella maskinen</translation>
+        <translation>Använd den nästlade CPU-funktionen för hårdvaruvirtualisering på den virtuella maskinen</translation>
     </message>
 </context>
 <context>
@@ -12568,15 +12568,15 @@
     </message>
     <message>
         <source>VirtualBox will try to auto-detect host proxy settings for tasks like downloading Guest Additions from the network or checking for updates</source>
-        <translation>VirtualBox försöker automatiskt upptäcka värdproxyinställningar för uppgifter som att hämta ner gästtillägg från nätverket eller söka efter uppdateringar</translation>
+        <translation>VirtualBox försöker automatiskt identifiera värdproxyinställningar för uppgifter som att hämta Gästtillägg från nätverket eller söka efter uppdateringar</translation>
     </message>
     <message>
         <source>VirtualBox will use direct Internet connection for tasks like downloading Guest Additions from the network or checking for updates</source>
-        <translation>VirtualBox använder direkt internetanslutning för uppgifter som att hämta ner gästtillägg från nätverket eller söka efter uppdateringar</translation>
+        <translation>VirtualBox använder en direkt internetanslutning för uppgifter som att hämta Gästtillägg från nätverket eller söka efter uppdateringar</translation>
     </message>
     <message>
         <source>VirtualBox will use the proxy settings supplied for tasks like downloading Guest Additions from the network or checking for updates</source>
-        <translation>VirtualBox använder de proxyinställningar som anges för uppgifter som att hämta ner gästtillägg från nätverket eller söka efter uppdateringar</translation>
+        <translation>VirtualBox använder angivna proxyinställningar för uppgifter som att hämta Gästtillägg från nätverket eller söka efter uppdateringar</translation>
     </message>
     <message>
         <source>&amp;URL</source>
