@@ -11380,7 +11380,7 @@
     </message>
     <message>
         <source>Promiscuous mode policy of the network adapter when attached to an internal network, host only network or a bridge</source>
-        <translation>Promiskuöst läge för nätverkskortet när det är anslutet till ett internt nätverk, ett endast-värd-nätverk eller en brygga</translation>
+        <translation>Promiskuöst läge för nätverkskortet när det är anslutet till ett internt nätverk, ett endast-värd-nätverk eller en nätverksbrygga</translation>
     </message>
     <message>
         <source>&amp;MAC Address</source>
@@ -11388,7 +11388,7 @@
     </message>
     <message>
         <source>MAC address of this adapter. It contains exactly 12 characters chosen from {0-9,A-F}. Note that the second character must be an even digit.</source>
-        <translation>MAC-adress för detta kort. Den innehåller exakt 12 tecken valda från {0-9,A-F}. Observera att det andra tecknet måste vara en jämn siffra.</translation>
+        <translation>MAC-adress för detta nätverkskort. Den innehåller exakt 12 tecken valda från {0-9,A-F}. Observera att det andra tecknet måste vara en jämn siffra.</translation>
     </message>
     <message>
         <source>Generate a new random MAC address</source>
@@ -13065,7 +13065,7 @@
     </message>
     <message>
         <source>Serial port number. You can choose one of the standard serial ports or select User-defined and specify port parameters manually.</source>
-        <translation>Seriellt portnummer. Du kan välja en av de vanliga serieportarna eller välja Användardefinierad och ange portparametrar manuellt.</translation>
+        <translation>Nummer för seriell port. Du kan välja en av de vanliga serieportarna eller välja Användardefinierad och ange portparametrar manuellt.</translation>
     </message>
     <message>
         <source>&amp;IRQ</source>
@@ -13081,7 +13081,7 @@
     </message>
     <message>
         <source>Base I/O port address of this serial port. Valid values are integer numbers in range from &apos;0&apos; to &apos;0xFFFF&apos;.</source>
-        <translation>Basadress för I/O-port för denna seriella port. Giltiga värden är heltal i intervallet ’0’ till ’0xFFFF’.</translation>
+        <translation>Basadress för I/O-porten för denna seriella port. Giltiga värden är heltal i intervallet ’0’ till ’0xFFFF’.</translation>
     </message>
     <message>
         <source>Port &amp;Mode</source>
