@@ -9498,11 +9498,11 @@
     </message>
     <message>
         <source>BETA build warning!</source>
-        <translation>BETA-byggnationsvarning!</translation>
+        <translation>Varning om betaversion!</translation>
     </message>
     <message>
         <source>Experimental build warning!</source>
-        <translation>Varning för experimentell byggnation!</translation>
+        <translation>Varning om experimentell version!</translation>
     </message>
     <message>
         <source>USBFS filesystem failure ...</source>
@@ -9538,7 +9538,7 @@
     </message>
     <message>
         <source>Unable to save extension pack file ...</source>
-        <translation>Kunde inte spara utökningspaketfilen ...</translation>
+        <translation>Kunde inte spara tilläggspaketfilen ...</translation>
     </message>
     <message>
         <source>Can&apos;t create machine folder ...</source>
@@ -9610,31 +9610,31 @@
     </message>
     <message>
         <source>Public key missing ...</source>
-        <translation>Publik nyckel saknas ...</translation>
+        <translation>Offentlig nyckel saknas ...</translation>
     </message>
     <message>
         <source>Public key file path is empty.</source>
-        <translation>Filsökväg för publik nyckel är tom.</translation>
+        <translation>Filsökvägen för den offentliga nyckeln är tom.</translation>
     </message>
     <message>
         <source>Failed to open the public key file &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt;. File doesn&apos;t exist.</source>
-        <translation>Misslyckades med att öppna publika nyckelfilen &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt;. Filen finns inte.</translation>
+        <translation>Misslyckades med att öppna den offentliga nyckelfilen &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt;. Filen finns inte.</translation>
     </message>
     <message>
         <source>Public key too large ...</source>
-        <translation>Publika nyckel är för stor ...</translation>
+        <translation>Offentlig nyckel är för stor ...</translation>
     </message>
     <message>
         <source>Failed to open the public key file &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt;. File is too large for the key.</source>
-        <translation>Misslyckades med att öppna publika nyckelfilen &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt;. Filen är för stor för nyckeln.</translation>
+        <translation>Misslyckades med att öppna den offentliga nyckelfilen &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt;. Filen är för stor för nyckeln.</translation>
     </message>
     <message>
         <source>Public key isn&apos;t readable ...</source>
-        <translation>Publika nyckeln är inte läsbar ...</translation>
+        <translation>Den offentliga nyckeln är inte läsbar ...</translation>
     </message>
     <message>
         <source>Failed to open the public key file &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt;. Check file permissions.</source>
-        <translation>Misslyckades med att öppna publika nyckelfilen &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt;. Kontrollera filrättigheterna.</translation>
+        <translation>Misslyckades med att öppna den offentliga nyckelfilen &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt;. Kontrollera filrättigheterna.</translation>
     </message>
     <message>
         <source>DHCP server isn&apos;t enabled ...</source>
@@ -9650,7 +9650,7 @@
     </message>
     <message>
         <source>Network &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt; does not currently have a valid IPv4 address.</source>
-        <translation>Nätverket &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt; har för tillfället inte en giltig IPv4-adress.</translation>
+        <translation>Nätverket &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt; har för närvarande ingen giltig IPv4-adress.</translation>
     </message>
     <message>
         <source>Invalid IPv4 mask ...</source>
@@ -9658,7 +9658,7 @@
     </message>
     <message>
         <source>Network &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt; does not currently have a valid IPv4 mask.</source>
-        <translation>Nätverket &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt; har för tillfället inte en giltig IPv4-mask.</translation>
+        <translation>Nätverket &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt; har för närvarande ingen giltig IPv4-mask.</translation>
     </message>
     <message>
         <source>Invalid IPv6 address ...</source>
@@ -9666,7 +9666,7 @@
     </message>
     <message>
         <source>Network &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt; does not currently have a valid IPv6 address.</source>
-        <translation>Nätverket &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt; har för tillfället inte en giltig IPv6-adress.</translation>
+        <translation>Nätverket &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt; har för närvarande ingen giltig IPv6-adress.</translation>
     </message>
     <message>
         <source>Invalid IPv6 prefix length ...</source>
@@ -9742,7 +9742,7 @@
     </message>
     <message>
         <source>Invalid port forwarding rules ...</source>
-        <translation>Ogiltiga regler för portvidarebefordran ...</translation>
+        <translation>Ogiltiga regler för portomdirigering ...</translation>
     </message>
     <message>
         <source>None of the host or guest port values may be set to zero.</source>
@@ -9861,7 +9861,7 @@
     </message>
     <message>
         <source>Medium failure ...</source>
-        <translation>Mediafel ...</translation>
+        <translation>Mediefel ...</translation>
     </message>
     <message>
         <source>Failed to acquire medium parameter.</source>
@@ -9953,11 +9953,11 @@
     </message>
     <message>
         <source>Failed to change the parameter of the virtual machine &lt;b&gt;%1&lt;/b&gt;.</source>
-        <translation>Misslyckades med att ändra parametern för virtuella maskinen &lt;b&gt;%1&lt;/b&gt;.</translation>
+        <translation>Misslyckades med att ändra parametern för den virtuella maskinen &lt;b&gt;%1&lt;/b&gt;.</translation>
     </message>
     <message>
         <source>Graphics adapter failure ...</source>
-        <translation>Grafikkortsfel ...</translation>
+        <translation>Grafikkontrollerfel ...</translation>
     </message>
     <message>
         <source>Failed to change graphics adapter parameter.</source>
@@ -9965,7 +9965,7 @@
     </message>
     <message>
         <source>Audio adapter failure ...</source>
-        <translation>Fel i ljudkort ...</translation>
+        <translation>Ljudkortsfel ...</translation>
     </message>
     <message>
         <source>Failed to change audio adapter parameter.</source>
@@ -9973,7 +9973,7 @@
     </message>
     <message>
         <source>Network adapter failure ...</source>
-        <translation>Fel i nätverkskort ...</translation>
+        <translation>Nätverkskortsfel ...</translation>
     </message>
     <message>
         <source>Failed to change network adapter parameter.</source>
