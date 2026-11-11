@@ -7348,7 +7348,7 @@
     </message>
     <message>
         <source>The virtual machine is currently assigned less than &lt;b&gt;%1&lt;/b&gt; of video memory which is the minimum amount required to switch to full-screen or seamless mode.</source>
-        <translation>Den virtuella maskinen har för tillfället tilldelats mindre än &lt;b&gt;%1&lt;/b&gt; av grafikminne vilket är den minsta mängden som krävs för att växla till helskärmsläge eller sömlöst läge.</translation>
+        <translation>Den virtuella maskinen har för tillfället tilldelats mindre än &lt;b&gt;%1&lt;/b&gt; grafikminne, vilket är den minsta mängden som krävs för att växla till helskärmsläge eller sömlöst läge.</translation>
     </message>
     <message>
         <source>The virtual machine is set up to use hardware graphics acceleration and the operating system hint is set to Windows Vista or later. For best performance you should set the machine&apos;s video memory to at least &lt;b&gt;%1&lt;/b&gt;.</source>
