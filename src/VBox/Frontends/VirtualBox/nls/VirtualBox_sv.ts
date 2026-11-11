@@ -7646,7 +7646,7 @@
     </message>
     <message>
         <source>Maximum width which we would like the guest to use</source>
-        <translation>Maximal bredd som vi vill att gästen ska använda</translation>
+        <translation>Maximal bredd som gästen får använda</translation>
     </message>
     <message>
         <source>&amp;Height</source>
@@ -7654,11 +7654,11 @@
     </message>
     <message>
         <source>Maximum height which we would like the guest to use</source>
-        <translation>Maximal höjd som vi vill att gästen ska använda</translation>
+        <translation>Maximal höjd som gästen får använda</translation>
     </message>
     <message>
         <source>Maximum guest screen size policy</source>
-        <translation>Maximal storlekspolicy för gästskärm</translation>
+        <translation>Policy för maximal gästskärmsstorlek</translation>
     </message>
 </context>
 <context>
