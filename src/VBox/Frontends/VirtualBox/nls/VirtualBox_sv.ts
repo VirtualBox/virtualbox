@@ -15035,7 +15035,7 @@
     </message>
     <message>
         <source>Enable virtual USB controller of this machine</source>
-        <translation>Aktivera virtuell USB-kontroller för denna maskin</translation>
+        <translation>Aktivera virtuell USB-kontroller för den här maskinen</translation>
     </message>
 </context>
 <context>
@@ -15053,7 +15053,7 @@
     <message>
         <source>&lt;nobr&gt;Vendor ID: %1&lt;/nobr&gt;&lt;br&gt;&lt;nobr&gt;Product ID: %2&lt;/nobr&gt;&lt;br&gt;&lt;nobr&gt;Revision: %3&lt;/nobr&gt;</source>
         <comment>USB device tooltip</comment>
-        <translation>&lt;nobr&gt;Tillverkarens id: %1&lt;/nobr&gt;&lt;br&gt;&lt;nobr&gt;Produktens id: %2&lt;/nobr&gt;&lt;br&gt;&lt;nobr&gt;Revision: %3&lt;/nobr&gt;</translation>
+        <translation>&lt;nobr&gt;Tillverkar-ID: %1&lt;/nobr&gt;&lt;br&gt;&lt;nobr&gt;Produkt-ID: %2&lt;/nobr&gt;&lt;br&gt;&lt;nobr&gt;Revision: %3&lt;/nobr&gt;</translation>
     </message>
     <message>
         <source>&lt;br&gt;&lt;nobr&gt;Serial No. %1&lt;/nobr&gt;</source>
@@ -15068,7 +15068,7 @@
     <message>
         <source>&lt;nobr&gt;Vendor ID: %1&lt;/nobr&gt;</source>
         <comment>USB filter tooltip</comment>
-        <translation>&lt;nobr&gt;Leverantörens id: %1&lt;/nobr&gt;</translation>
+        <translation>&lt;nobr&gt;Tillverkar-ID: %1&lt;/nobr&gt;</translation>
     </message>
     <message>
         <source>&lt;nobr&gt;Product ID: %2&lt;/nobr&gt;</source>
