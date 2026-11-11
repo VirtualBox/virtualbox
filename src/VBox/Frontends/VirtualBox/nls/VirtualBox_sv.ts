@@ -14962,7 +14962,7 @@
     </message>
     <message>
         <source>Move Filter Up</source>
-        <translation>Flytta filter upp</translation>
+        <translation>Flytta filter uppåt</translation>
     </message>
     <message>
         <source>Moves selected USB filter up.</source>
@@ -14970,7 +14970,7 @@
     </message>
     <message>
         <source>Move Filter Down</source>
-        <translation>Flytta filter ner</translation>
+        <translation>Flytta filter nedåt</translation>
     </message>
     <message>
         <source>Moves selected USB filter down.</source>
@@ -14987,7 +14987,7 @@
     </message>
     <message>
         <source>Add new USB filter with all fields initially set to empty strings. Note that such a filter will match any attached USB device.</source>
-        <translation>Lägg till ett nytt USB-filter med alla fält initialt inställda med tomma strängar. Observera att ett sådant filter kommer att matcha alla anslutna USB-enheter.</translation>
+        <translation>Lägg till ett nytt USB-filter med alla fält initialt inställda på tomma strängar. Observera att ett sådant filter kommer att matcha alla anslutna USB-enheter.</translation>
     </message>
     <message>
         <source>Add new USB filter with all fields set to the values of the selected USB device attached to the host PC</source>
