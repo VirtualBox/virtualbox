@@ -806,11 +806,11 @@
     </message>
     <message>
         <source>E&amp;xtra Data Manager...</source>
-        <translation>E&amp;xtra datahanterare...</translation>
+        <translation>E&amp;xtradatahanterare...</translation>
     </message>
     <message>
         <source>Display the Extra Data Manager window</source>
-        <translation>Visa fönstret för extra datahanterare</translation>
+        <translation>Visa fönstret för extradatahanteraren</translation>
     </message>
     <message>
         <source>Create new virtual machine</source>
@@ -846,7 +846,7 @@
     </message>
     <message>
         <source>Display the virtual machine settings window</source>
-        <translation>Visa inställningsfönstret för virtuella maskiner</translation>
+        <translation>Visa inställningsfönstret för den virtuella maskinen</translation>
     </message>
     <message>
         <source>Clone selected virtual machine</source>
@@ -898,7 +898,7 @@
     </message>
     <message>
         <source>Suspend execution of selected virtual machines</source>
-        <translation>Avbryt körning av de markerade virtuella maskinerna</translation>
+        <translation>Pausa körningen av de markerade virtuella maskinerna</translation>
     </message>
     <message>
         <source>Reset selected virtual machines</source>
@@ -922,7 +922,7 @@
     </message>
     <message>
         <source>Show the VirtualBox Machine Definition files in Finder</source>
-        <translation>Visa VirtualBox-maskindefinitionsfiler i Finder</translation>
+        <translation>Visa VirtualBox-maskindefinitionsfilerna i Finder</translation>
     </message>
     <message>
         <source>S&amp;how in Explorer</source>
@@ -942,7 +942,7 @@
     </message>
     <message>
         <source>Cr&amp;eate Alias on Desktop</source>
-        <translation>S&amp;kapa alias på skrivbordet</translation>
+        <translation>&amp;Skapa alias på skrivbordet</translation>
     </message>
     <message>
         <source>Create alias files to the VirtualBox Machine Definition files on your desktop</source>
@@ -1034,7 +1034,7 @@
     </message>
     <message>
         <source>Delete selected snapshot of the virtual machine</source>
-        <translation>Ta bort markerad ögonblicksbild för virtuella maskinen</translation>
+        <translation>Ta bort markerad ögonblicksbild för den virtuella maskinen</translation>
     </message>
     <message>
         <source>&amp;Restore...</source>
@@ -1042,7 +1042,7 @@
     </message>
     <message>
         <source>Restore selected snapshot of the virtual machine</source>
-        <translation>Återställ markerad ögonblicksbild för virtuella maskinen</translation>
+        <translation>Återställ markerad ögonblicksbild för den virtuella maskinen</translation>
     </message>
     <message>
         <source>&amp;Properties</source>
@@ -1146,7 +1146,7 @@
     </message>
     <message>
         <source>Profile &amp;Properties</source>
-        <translation>Profil&amp;egenskaper</translation>
+        <translation>Egenskaper för &amp;profil</translation>
     </message>
     <message>
         <source>Open pane with selected cloud profile properties</source>
@@ -1190,7 +1190,7 @@
     </message>
     <message>
         <source>Switch between normal and full-screen mode</source>
-        <translation>Växla mellan normal och helskärmsläge</translation>
+        <translation>Växla mellan normalläge och helskärmsläge</translation>
     </message>
     <message>
         <source>S&amp;caled Mode</source>
@@ -1202,7 +1202,7 @@
     </message>
     <message>
         <source>Automatically resize the guest display when the window is resized</source>
-        <translation>Storleksändra automatiskt gästskärmen när fönstret är storleksändrat</translation>
+        <translation>Ändra automatiskt storlek på gästskärmen när fönstret ändrar storlek</translation>
     </message>
     <message>
         <source>Take guest display screenshot</source>
@@ -1218,11 +1218,11 @@
     </message>
     <message>
         <source>Display virtual machine settings window to configure video/audio recording</source>
-        <translation>Visa fönstret för virtuella maskininställningar för att konfigurera video-/ljudinspelning</translation>
+        <translation>Visa fönstret för virtuella maskininställningar för att konfigurera video- och ljudinspelning</translation>
     </message>
     <message>
         <source>Enable guest video/audio recording</source>
-        <translation>Aktivera inspelning av gästens video/ljud</translation>
+        <translation>Aktivera inspelning av video och ljud från gästen</translation>
     </message>
     <message>
         <source>Allow remote desktop (RDP) connections to this machine</source>
@@ -1238,7 +1238,7 @@
     </message>
     <message>
         <source>Display window to configure menu-bar</source>
-        <translation>Visa fönster för att konfigurera menyraden</translation>
+        <translation>Visa fönstret för att konfigurera menyraden</translation>
     </message>
     <message>
         <source>Show Menu &amp;Bar</source>
@@ -1258,7 +1258,7 @@
     </message>
     <message>
         <source>Display window to configure status-bar</source>
-        <translation>Visa fönster för att konfigurera statusraden</translation>
+        <translation>Visa fönstret för att konfigurera statusraden</translation>
     </message>
     <message>
         <source>Show Status &amp;Bar</source>
@@ -1291,7 +1291,7 @@
     </message>
     <message>
         <source>Send the %1 sequence to the virtual machine</source>
-        <translation>Skicka %1-sekvensen till virtuella maskinen</translation>
+        <translation>Skicka %1-sekvensen till den virtuella maskinen</translation>
     </message>
     <message>
         <source>&amp;Mouse</source>
