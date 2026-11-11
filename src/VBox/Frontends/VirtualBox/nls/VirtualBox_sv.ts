@@ -17325,7 +17325,7 @@
     </message>
     <message>
         <source>&lt;p&gt;A &lt;b&gt;dynamically allocated&lt;/b&gt; hard disk file will only use space on your physical hard disk as it fills up (up to a maximum &lt;b&gt;fixed size&lt;/b&gt;), although it will not shrink again automatically when space on it is freed.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;En &lt;b&gt;dynamiskt allokerad&lt;/b&gt; hårddiskfil kommer endast använda utrymme på din fysiska hårddisk när den fylls upp till (upp till ett maximal &lt;b&gt;fast storlek&lt;/b&gt;), dock kommer den inte att minska igen automatiskt när utrymme frigörs.&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;En &lt;b&gt;dynamiskt allokerad&lt;/b&gt; hårddiskfil använder bara utrymme på den fysiska hårddisken när den fylls på, upp till en maximal &lt;b&gt;fast storlek&lt;/b&gt;. Den krymper dock inte automatiskt när utrymme frigörs.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&lt;p&gt;A &lt;b&gt;fixed size&lt;/b&gt; hard disk file may take longer to create on some systems but is often faster to use.&lt;/p&gt;</source>
@@ -17333,7 +17333,7 @@
     </message>
     <message>
         <source>&lt;p&gt;You can also choose to &lt;b&gt;split&lt;/b&gt; the hard disk file into several files of up to two gigabytes each. This is mainly useful if you wish to store the virtual machine on removable USB devices or old systems, some of which cannot handle very large files.</source>
-        <translation>&lt;p&gt;Du kan även välja att &lt;b&gt;dela upp&lt;/b&gt; hårddiskfilen i flera filer med upp till två gigabyte var. Detta är oftast användbart om du önskar att lagra den virtuella maskinen på flyttbara USB-enheter eller äldre system, vilka inte kan hantera mycket stora filer.</translation>
+        <translation>&lt;p&gt;Du kan också välja att &lt;b&gt;dela upp&lt;/b&gt; hårddiskfilen i flera filer på upp till två gigabyte vardera. Detta är särskilt användbart om du vill lagra den virtuella maskinen på flyttbara USB-enheter eller äldre system, eftersom vissa av dem inte kan hantera mycket stora filer.</translation>
     </message>
     <message>
         <source>Hard Disk File &amp;Type and Variant</source>
