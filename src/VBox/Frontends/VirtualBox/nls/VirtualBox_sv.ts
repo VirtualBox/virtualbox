@@ -7403,7 +7403,7 @@
     </message>
     <message>
         <source>Disk encryption cipher type not specified.</source>
-        <translation>Chiffer  för diskkryptering inte angivet.</translation>
+        <translation>Chiffertyp för diskkryptering har inte angetts.</translation>
     </message>
     <message>
         <source>Disk encryption password empty.</source>
@@ -13496,11 +13496,11 @@
     </message>
     <message>
         <source>Apply changes in current snapshot details</source>
-        <translation>Tillämpa ändringar i aktuella detaljer för ögonblicksbild</translation>
+        <translation>Tillämpa ändringar i informationen om den aktuella ögonblicksbilden</translation>
     </message>
     <message>
         <source>Reset changes in current snapshot details</source>
-        <translation>Nollställ ändringar i aktuella detaljer för ögonblicksbild</translation>
+        <translation>Nollställ ändringar i informationen om den aktuella ögonblicksbilden</translation>
     </message>
     <message>
         <source>Apply Changes (%1)</source>
@@ -13520,11 +13520,11 @@
     </message>
     <message>
         <source>Enter a name for the new snapshot...</source>
-        <translation>Ange ett namn för nya ögonblicksbilden...</translation>
+        <translation>Ange ett namn för den nya ögonblicksbilden...</translation>
     </message>
     <message>
         <source>Enter a name for this snapshot...</source>
-        <translation>Ange ett namn för denna ögonblicksbild...</translation>
+        <translation>Ange ett namn för den här ögonblicksbilden...</translation>
     </message>
     <message>
         <source>Take</source>
@@ -13532,7 +13532,7 @@
     </message>
     <message>
         <source>Take snapshot on the basis of current machine state</source>
-        <translation>Spara ögonblicksbild på bas av aktuellt maskintillstånd</translation>
+        <translation>Spara en ögonblicksbild baserat på det aktuella maskintillståndet</translation>
     </message>
     <message>
         <source>Take Snapshot (%1)</source>
@@ -16252,7 +16252,7 @@
     </message>
     <message>
         <source>VM will act as a Remote Desktop Protocol (RDP) server, allowing remote clients to connect and operate the VM (when it is running) using a standard RDP client</source>
-        <translation>VM fungerar som en RDP-server (Remote Desktop Protocol), vilket gör det möjligt för fjärrklienter att ansluta till och använda denna VM (när den är igång) med hjälp av en standard-RDP-klient</translation>
+        <translation>VM fungerar som en RDP-server (Remote Desktop Protocol), vilket gör det möjligt för fjärrklienter att ansluta till och använda den virtuella maskinen när den körs med en vanlig RDP-klient</translation>
     </message>
     <message>
         <source>Server &amp;Port</source>
@@ -16296,7 +16296,7 @@
     </message>
     <message>
         <source>Multiple simultaneous connections to the VM will be permitted</source>
-        <translation>Flera samtidiga anslutningar till denna VM kommer att tillåtas</translation>
+        <translation>Flera samtidiga anslutningar till den virtuella maskinen tillåts</translation>
     </message>
 </context>
 <context>
@@ -16485,7 +16485,7 @@
     </message>
     <message>
         <source>Opens the help browser and navigates to the related section</source>
-        <translation>Öppnar hjälpbläddraren och navigerar till relaterat avsnitt</translation>
+        <translation>Öppnar hjälpvisaren och går till det berörda avsnittet</translation>
     </message>
     <message>
         <source>VISO Name:</source>
@@ -16513,7 +16513,7 @@
     </message>
     <message>
         <source>Has Removed Child</source>
-        <translation>Har borttaget barn</translation>
+        <translation>Har borttagna underobjekt</translation>
     </message>
     <message>
         <source>VISO Browser</source>
@@ -16521,7 +16521,7 @@
     </message>
     <message>
         <source>Child/children removed</source>
-        <translation>Barn borttagna</translation>
+        <translation>Underobjekt har tagits bort</translation>
     </message>
     <message>
         <source>Host Browser</source>
@@ -16529,7 +16529,7 @@
     </message>
     <message>
         <source>The list of custom options delimited with &apos;;&apos;.</source>
-        <translation>Listan över anpassade alternativ avgränsade med &apos;;&apos;.</translation>
+        <translation>En lista med anpassade alternativ, avgränsade med &apos;;&apos;.</translation>
     </message>
     <message>
         <source>Dialog Settings</source>
