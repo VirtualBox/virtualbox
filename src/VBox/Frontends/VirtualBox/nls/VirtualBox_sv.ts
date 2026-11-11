@@ -2601,7 +2601,7 @@
     </message>
     <message>
         <source>Product-URL</source>
-        <translation>URL för produkt</translation>
+        <translation>Produktens URL</translation>
     </message>
     <message>
         <source>Vendor</source>
@@ -2609,7 +2609,7 @@
     </message>
     <message>
         <source>Vendor-URL</source>
-        <translation>URL för leverantör</translation>
+        <translation>Leverantörens URL</translation>
     </message>
     <message>
         <source>Version</source>
