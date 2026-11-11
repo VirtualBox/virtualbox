@@ -6395,7 +6395,7 @@
     </message>
     <message>
         <source>Graphics controller type the virtual machine will use</source>
-        <translation>Typ av grafikkort som den virtuella maskinen kommer att använda</translation>
+        <translation>Typ av grafikkontroller som den virtuella maskinen använder</translation>
     </message>
 </context>
 <context>
@@ -8236,11 +8236,11 @@
     </message>
     <message>
         <source>Toggle menu %1</source>
-        <translation>Växla meny %1</translation>
+        <translation>Visa eller dölj menyn %1</translation>
     </message>
     <message>
         <source>Popup menu %1</source>
-        <translation>Visa snabbmeny %1</translation>
+        <translation>Visa snabbmenyn %1</translation>
     </message>
     <message>
         <source>Enable Menu Bar</source>
@@ -8248,7 +8248,7 @@
     </message>
     <message>
         <source>Virtual Screen Resize</source>
-        <translation>Storleksändra virtuell skärm</translation>
+        <translation>Ändra storlek på virtuell skärm</translation>
     </message>
     <message>
         <source>Virtual Screen Remap</source>
@@ -8264,7 +8264,7 @@
     </message>
     <message>
         <source>Configure the virtual machine menus</source>
-        <translation>Konfigurera de virtuella maskinmenyerna</translation>
+        <translation>Konfigurera den virtuella maskinens menyer</translation>
     </message>
 </context>
 <context>
@@ -10913,7 +10913,7 @@
     </message>
     <message>
         <source>Show in &amp;Full-screen/Seamless</source>
-        <translation>Visa i &amp;helskärm/sömlöst</translation>
+        <translation>Visa i &amp;helskärmsläge/sömlöst läge</translation>
     </message>
     <message>
         <source>When checked, show the Mini ToolBar in full-screen and seamless modes.</source>
@@ -13937,7 +13937,7 @@
     </message>
     <message>
         <source>Configure the virtual machine status bar</source>
-        <translation>Konfigurera statusfältet för virtuell maskin</translation>
+        <translation>Konfigurera den virtuella maskinens statusrad</translation>
     </message>
 </context>
 <context>
