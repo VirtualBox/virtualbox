@@ -11957,23 +11957,23 @@
     </message>
     <message>
         <source>Toggle ascending/descending order</source>
-        <translation>Växla stigande/fallande ordning</translation>
+        <translation>Växla mellan stigande och fallande ordning</translation>
     </message>
     <message>
         <source>Keep finished progresses</source>
-        <translation>Behåll färdiga förlopp</translation>
+        <translation>Behåll slutförda förlopp</translation>
     </message>
     <message>
         <source>Delete finished notifications</source>
-        <translation>Ta bort färdiga notifieringar</translation>
+        <translation>Ta bort slutförda notifieringar</translation>
     </message>
     <message>
         <source>Align Bottom</source>
-        <translation>Justera mot botten</translation>
+        <translation>Justera längst ned</translation>
     </message>
     <message>
         <source>Align Top</source>
-        <translation>Justera mot toppen</translation>
+        <translation>Justera längst upp</translation>
     </message>
 </context>
 <context>
