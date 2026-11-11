@@ -7607,7 +7607,7 @@
     <name>UIMachineWindow</name>
     <message>
         <source> EXPERIMENTAL build %1r%2 - %3</source>
-        <translation> EXPERIMENTELL byggnation %1r%2 - %3</translation>
+        <translation> EXPERIMENTELL testversion %1r%2 - %3</translation>
     </message>
 </context>
 <context>
