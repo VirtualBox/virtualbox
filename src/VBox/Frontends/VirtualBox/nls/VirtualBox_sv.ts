@@ -5743,7 +5743,7 @@
     <name>UIExtensionPackManager</name>
     <message>
         <source>Extension Pack Manager</source>
-        <translation>Hantera tilläggspaket</translation>
+        <translation>Hanterare för tilläggspaket</translation>
     </message>
     <message>
         <source>Close</source>
@@ -5783,7 +5783,7 @@
     </message>
     <message>
         <source>Select an extension package file</source>
-        <translation>Välj en tilläggspaketfil</translation>
+        <translation>Välj en fil med tilläggspaket</translation>
     </message>
     <message>
         <source>Extension package files (%1)</source>
@@ -5792,7 +5792,7 @@
     <message>
         <source>Active</source>
         <comment>ext pack</comment>
-        <translation>Aktiv</translation>
+        <translation>Aktivt</translation>
     </message>
 </context>
 <context>
@@ -17620,7 +17620,7 @@
     </message>
     <message>
         <source>Summary</source>
-        <translation>Sammandrag</translation>
+        <translation>Sammanfattning</translation>
     </message>
     <message>
         <source>The following table summarizes the configuration you have chosen for the new virtual machine. When you are happy with the configuration press Finish to create the virtual machine. Alternatively you can go back and modify the configuration.</source>
@@ -17664,11 +17664,11 @@
     </message>
     <message>
         <source>Invalid guest additions installation media</source>
-        <translation>Ogiltigt installationsmedia för gästtillägg</translation>
+        <translation>Ogiltigt installationsmedium för Gästtillägg</translation>
     </message>
     <message>
         <source>Guest additions installation media is valid</source>
-        <translation>Installationsmedia för gästtillägg är giltigt</translation>
+        <translation>Installationsmedium för Gästtillägg är giltigt</translation>
     </message>
     <message>
         <source>File path is valid</source>
@@ -17704,15 +17704,15 @@
     </message>
     <message>
         <source>The ISO file to install the VirtualBox Guest Additions</source>
-        <translation>ISO-filen för att installera VirtualBox Gästtillägg</translation>
+        <translation>ISO-filen för installation av VirtualBox Gästtillägg</translation>
     </message>
     <message>
         <source>Guest &amp;Additions ISO Image:</source>
-        <translation>ISO-avbildning för &amp;gästtillägg:</translation>
+        <translation>ISO-avbildning för &amp;Gästtillägg:</translation>
     </message>
     <message>
         <source>Install Gu&amp;est Additions</source>
-        <translation>Installera gäs&amp;ttillägg</translation>
+        <translation>Installera Gäs&amp;ttillägg</translation>
     </message>
     <message>
         <source>Install the VirtualBox Guest Additions on the guest OS</source>
@@ -17864,7 +17864,7 @@
     </message>
     <message>
         <source>Guest Additions ISO Image</source>
-        <translation>ISO-avbildning för gästtillägg</translation>
+        <translation>ISO-avbildning för Gästtillägg</translation>
     </message>
     <message>
         <source>Virtual Hardware</source>
@@ -17888,7 +17888,7 @@
     </message>
     <message>
         <source>The ISO is attached to the VM, so you can install the OS automatically</source>
-        <translation>ISO-filen ansluts till VM så att du kan installera operativsystemet automatiskt</translation>
+        <translation>ISO-filen är ansluten till den virtuella maskinen så att du kan installera operativsystemet automatiskt</translation>
     </message>
     <message>
         <source>Proceed with Unattended Installation</source>
