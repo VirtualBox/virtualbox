@@ -5691,12 +5691,12 @@
     <message>
         <source>Callee:</source>
         <comment>error info</comment>
-        <translation>Anropare:</translation>
+        <translation>Anropad:</translation>
     </message>
     <message>
         <source>Callee&amp;nbsp;RC:</source>
         <comment>error info</comment>
-        <translation>Anropare&amp;nbsp;RC:</translation>
+        <translation>Anropads&amp;nbsp;RC:</translation>
     </message>
     <message>
         <source>Result&amp;nbsp;Detail:</source>
