@@ -5763,7 +5763,7 @@
     </message>
     <message>
         <source>Close Window (%1)</source>
-        <translation>Stäng fönster (%1)</translation>
+        <translation>Stäng fönstret (%1)</translation>
     </message>
     <message>
         <source>Show Help (%1)</source>
@@ -7970,7 +7970,7 @@
     </message>
     <message>
         <source>This type of medium is attached indirectly, so that one base medium can be used for several VMs which have their own differencing medium to store their modifications.</source>
-        <translation>Den här typen av medium är indirekt ansluten, så att ett basmedium kan användas av flera virtuella maskiner med egna differensmedier för sina ändringar.</translation>
+        <translation>Den här typen av medium är indirekt ansluten, så att ett basmedium kan användas av flera virtuella maskiner med egna differensmedier för att lagra sina ändringar.</translation>
     </message>
     <message>
         <source>Registered hard drives</source>
