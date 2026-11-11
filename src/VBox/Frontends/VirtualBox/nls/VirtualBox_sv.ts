@@ -3133,7 +3133,7 @@
     <name>UIChooserNodeGroup</name>
     <message>
         <source>Machine group</source>
-        <translation>Maskingrupp</translation>
+        <translation>Virtuell maskingrupp</translation>
     </message>
 </context>
 <context>
