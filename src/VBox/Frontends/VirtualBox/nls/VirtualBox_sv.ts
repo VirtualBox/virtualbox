@@ -15035,7 +15035,7 @@
     </message>
     <message>
         <source>Enable virtual USB controller of this machine</source>
-        <translation>Aktivera virtuell USB-kontroller för den här maskinen</translation>
+        <translation>Aktivera den här maskinens virtuella USB-styrkort</translation>
     </message>
 </context>
 <context>
