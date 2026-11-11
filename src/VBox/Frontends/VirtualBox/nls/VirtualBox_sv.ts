@@ -6870,7 +6870,7 @@
     </message>
     <message>
         <source>Domain name to be assigned to the virtual machine</source>
-        <translation>Domännamnet som ska tilldelas till den virtuella maskinen</translation>
+        <translation>Domännamnet som ska tilldelas den virtuella maskinen</translation>
     </message>
 </context>
 <context>
