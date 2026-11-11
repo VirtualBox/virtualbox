@@ -16880,11 +16880,11 @@
     </message>
     <message>
         <source>Create a Manifest file for automatic data integrity checks on import.</source>
-        <translation>Skapa en Manifest-fil för automatiska dataintegritetskontroller vid import.</translation>
+        <translation>Skapa en manifestfil för automatiska kontroller av dataintegriteten vid import.</translation>
     </message>
     <message>
         <source>This is the descriptive information which will be added to the virtual appliance.  You can change it by double clicking on individual lines.</source>
-        <translation>Detta är den beskrivande information som läggs till i den virtuella appliancen. Du kan ändra den genom att dubbelklicka på enskilda rader.</translation>
+        <translation>Detta är den beskrivande informationen som läggs till i den virtuella appliancen. Du kan ändra den genom att dubbelklicka på enskilda rader.</translation>
     </message>
     <message>
         <source>Please choose a file to export the virtual appliance to</source>
@@ -16916,11 +16916,11 @@
     </message>
     <message>
         <source>&lt;p&gt;Please choose a format to export the virtual appliance to.&lt;/p&gt;&lt;p&gt;The &lt;b&gt;Open Virtualization Format&lt;/b&gt; supports only &lt;b&gt;ovf&lt;/b&gt; or &lt;b&gt;ova&lt;/b&gt; extensions. If you use the &lt;b&gt;ovf&lt;/b&gt; extension, several files will be written separately. If you use the &lt;b&gt;ova&lt;/b&gt; extension, all the files will be combined into one Open Virtualization Format archive.&lt;/p&gt;&lt;p&gt;The &lt;b&gt;Oracle Cloud Infrastructure&lt;/b&gt; format supports exporting to remote cloud servers only. Main virtual disk of each selected machine will be uploaded to remote server.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Välj ett format att exportera den virtuella appliancen till.&lt;/p&gt;&lt;p&gt; &lt;b&gt;Open Virtualization Format&lt;/b&gt; har endast stöd för filändelserna &lt;b&gt;ovf&lt;/b&gt; eller &lt;b&gt;ova&lt;/b&gt;. Om du använder filändelsen &lt;b&gt;ovf&lt;/b&gt; kommer flera filer att skrivas separat. Om du använder filändelsen &lt;b&gt;ova&lt;/b&gt; kommer alla filer att kombineras till ett Open Virtualization Format-arkiv.&lt;/p&gt;&lt;p&gt;Formatet &lt;b&gt;Oracle Cloud Infrastructure&lt;/b&gt; har stöd för att exportera till fjärrmolnservrar endast. Huvudsakliga virtuella disken för varje vald maskin kommer att skickas upp till fjärrservern.&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Välj ett format att exportera den virtuella appliancen till.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Open Virtualization Format&lt;/b&gt; har endast stöd för filändelserna &lt;b&gt;ovf&lt;/b&gt; eller &lt;b&gt;ova&lt;/b&gt;. Om du använder filändelsen &lt;b&gt;ovf&lt;/b&gt; kommer flera filer att skrivas separat. Om du använder filändelsen &lt;b&gt;ova&lt;/b&gt; kommer alla filer att kombineras till ett Open Virtualization Format-arkiv.&lt;/p&gt;&lt;p&gt;Formatet &lt;b&gt;Oracle Cloud Infrastructure&lt;/b&gt; har endast stöd för export till fjärranslutna molnservrar. Den huvudsakliga virtuella disken för varje vald maskin överförs till fjärrservern.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>Choose a file to export the virtual appliance to...</source>
-        <translation>Välj en fil att exportera virtuell appliance till...</translation>
+        <translation>Välj en fil att exportera den virtuella appliancen till...</translation>
     </message>
     <message>
         <source>Export to cloud service provider.</source>
@@ -16936,7 +16936,7 @@
     </message>
     <message>
         <source>Include only NAT network adapter MAC addresses</source>
-        <translation>Inkludera hårdvaruadresser för endast-NAT nätverkskort</translation>
+        <translation>Inkludera endast hårdvaruadresser för NAT-nätverkskort</translation>
     </message>
     <message>
         <source>Strip all network adapter MAC addresses</source>
@@ -16948,7 +16948,7 @@
     </message>
     <message>
         <source>Include only NAT network adapter MAC addresses in exported appliance archive.</source>
-        <translation>Inkludera endast-NAT-nätverkskorts hårdvaruadresser i exporterat appliance-arkiv.</translation>
+        <translation>Inkludera endast hårdvaruadresser för NAT-nätverkskort i exporterat appliance-arkiv.</translation>
     </message>
     <message>
         <source>Strip all network adapter MAC addresses from exported appliance archive.</source>
@@ -16972,7 +16972,7 @@
     </message>
     <message>
         <source>Machine Creation:</source>
-        <translation>Skapa maskin:</translation>
+        <translation>Skapande av maskin:</translation>
     </message>
     <message>
         <source>Ask me about it &amp;after exporting disk as custom image</source>
@@ -17024,7 +17024,7 @@
     </message>
     <message>
         <source>Please choose a filename to export the virtual appliance to. Besides that you can specify a certain amount of options which affects the size and content of resulting archive.</source>
-        <translation>Välj ett filnamn att exportera den virtuella appliancen till. Du kan dessutom ange alternativ som påverkar storleken och innehållet i det resulterande arkivet.</translation>
+        <translation>Välj ett filnamn att exportera den virtuella appliancen till. Du kan dessutom ange vissa alternativ som påverkar storleken och innehållet i det resulterande arkivet.</translation>
     </message>
     <message>
         <source>Contains a list of Virtual Machines</source>
@@ -17036,7 +17036,7 @@
     </message>
     <message>
         <source>Cloud Profile Manager</source>
-        <translation>Hantera molnprofiler</translation>
+        <translation>Hanterare för molnprofiler</translation>
     </message>
     <message>
         <source>Opens cloud profile manager...</source>
