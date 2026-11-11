@@ -6923,19 +6923,19 @@
     <name>UIIndicatorAudio</name>
     <message>
         <source>Output enabled</source>
-        <translation>Utgång aktiverad</translation>
+        <translation>Ljudutgång aktiverad</translation>
     </message>
     <message>
         <source>Output disabled</source>
-        <translation>Utgång inaktiverad</translation>
+        <translation>Ljudutgång inaktiverad</translation>
     </message>
     <message>
         <source>Input enabled</source>
-        <translation>Inmatning aktiverad</translation>
+        <translation>Ljudingång aktiverad</translation>
     </message>
     <message>
         <source>Input disabled</source>
-        <translation>Inmatning inaktiverad</translation>
+        <translation>Ljudingång inaktiverad</translation>
     </message>
 </context>
 <context>
@@ -7442,7 +7442,7 @@
     </message>
     <message>
         <source>The MAC address must be 12 hexadecimal digits long.</source>
-        <translation>MAC-adressen måste vara hexadecimal och 12 siffror lång.</translation>
+        <translation>MAC-adressen måste bestå av 12 hexadecimala siffror.</translation>
     </message>
     <message>
         <source>The second digit in the MAC address may not be odd as only unicast addresses are allowed.</source>
@@ -7458,7 +7458,7 @@
     </message>
     <message>
         <source>Host-only adapters are no longer supported, use host-only networks instead.</source>
-        <translation>Endast-värd-nätverkskort stöds inte längre, använd endast-värd-nätverk istället.</translation>
+        <translation>Endast-värd-nätverkskort stöds inte längre. Använd endast-värd-nätverk i stället.</translation>
     </message>
     <message>
         <source>No host-only network name is currently specified.</source>
@@ -7469,7 +7469,7 @@
     <name>UIMachineSettingsPortForwardingDlg</name>
     <message>
         <source>Port Forwarding Rules</source>
-        <translation>Regler för omdirigering av portar</translation>
+        <translation>Regler för portomdirigering</translation>
     </message>
 </context>
 <context>
@@ -13402,7 +13402,7 @@
     </message>
     <message>
         <source> Transient Folders</source>
-        <translation> Temporära mappar</translation>
+        <translation> Tillfälliga mappar</translation>
     </message>
     <message>
         <source>All shared folders accessible to this machine. Use &apos;net use x: \\vboxsvr\share&apos; to access a shared folder named &apos;share&apos; from a DOS-like OS, or &apos;mount -t vboxsf share mount_point&apos; to access it from a Linux OS. This feature requires Guest Additions.</source>
