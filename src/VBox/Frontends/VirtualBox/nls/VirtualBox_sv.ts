@@ -239,7 +239,7 @@
     </message>
     <message>
         <source>Enter machine name...</source>
-        <translation>Ange maskinnamn...</translation>
+        <translation>Ange maskinens namn...</translation>
     </message>
 </context>
 <context>
@@ -16594,15 +16594,15 @@
     <name>UIWizardAddCloudVM</name>
     <message>
         <source>Add Cloud Virtual Machine</source>
-        <translation>Lägg till virtuell maskin i molnet</translation>
+        <translation>Lägg till virtuell molnmaskin</translation>
     </message>
     <message>
         <source>Source to add from</source>
-        <translation>Källa att lägga till den virtuella molnmaskinen från</translation>
+        <translation>Källa att lägga till från</translation>
     </message>
     <message>
         <source>Please choose the source to add cloud virtual machine from.  This can be one of known cloud service providers below.</source>
-        <translation>Välj källa för den virtuella molnmaskinen. Välj en av molntjänstleverantörerna nedan.</translation>
+        <translation>Välj en källa att lägga till en virtuell molnmaskin från. Det kan vara någon av molntjänstleverantörerna nedan.</translation>
     </message>
     <message>
         <source>&amp;Instances:</source>
@@ -16618,7 +16618,7 @@
     </message>
     <message>
         <source>Selects cloud service provider.</source>
-        <translation>Väljer leverantör för molntjänst.</translation>
+        <translation>Väljer molntjänstleverantör.</translation>
     </message>
     <message>
         <source>P&amp;rofile:</source>
@@ -16630,7 +16630,7 @@
     </message>
     <message>
         <source>Cloud Profile Manager</source>
-        <translation>Hantera molnprofiler</translation>
+        <translation>Hanterare för molnprofiler</translation>
     </message>
     <message>
         <source>Opens cloud profile manager...</source>
@@ -16638,7 +16638,7 @@
     </message>
     <message>
         <source>Lists all the cloud VM instances.</source>
-        <translation>Listar alla instanser av virtuella maskiner i molnet.</translation>
+        <translation>Listar alla instanser av molnmaskiner.</translation>
     </message>
 </context>
 <context>
@@ -17226,7 +17226,7 @@
     <name>UIWizardNewCloudVM</name>
     <message>
         <source>Create Cloud Virtual Machine</source>
-        <translation>Skapa virtuell maskin i molnet</translation>
+        <translation>Skapa virtuell molnmaskin</translation>
     </message>
     <message>
         <source>Cloud Virtual Machine settings</source>
@@ -17234,7 +17234,7 @@
     </message>
     <message>
         <source>These are the the suggested settings of the cloud VM creation procedure, they are influencing the resulting cloud VM instance.  You can change many of the properties shown by double-clicking on the items and disable others using the check boxes below.</source>
-        <translation>Dessa är de föreslagna inställningarna för skapandeprocessen för virtuella molnmaskiner.  Du kan ändra många av egenskaperna som visas genom att dubbelklicka på posterna och inaktivera andra genom kryssrutorna nedan.</translation>
+        <translation>Det här är de föreslagna inställningarna för att skapa molnmaskinen. De påverkar den skapade molnmaskininstansen. Du kan ändra många av egenskaperna genom att dubbelklicka på posterna och inaktivera andra med kryssrutorna nedan.</translation>
     </message>
     <message>
         <source>&amp;Images</source>
@@ -17246,11 +17246,11 @@
     </message>
     <message>
         <source>Location to create</source>
-        <translation>Plats att skapa</translation>
+        <translation>Plats där den ska skapas</translation>
     </message>
     <message>
         <source>Please choose the location to create cloud virtual machine in.  This can be one of known cloud service providers below.</source>
-        <translation>Välj platsen att skapa den virtuella molnmaskinen i.  Detta kan vara en av de kända molntjänstleverantörerna nedan.</translation>
+        <translation>Välj platsen där den virtuella molnmaskinen ska skapas. Det kan vara en av de kända molntjänstleverantörerna nedan.</translation>
     </message>
     <message>
         <source>&amp;Source:</source>
@@ -17258,7 +17258,7 @@
     </message>
     <message>
         <source>Please choose one of cloud service profiles you have registered to create virtual machine for.  Existing images list will be updated.  To continue, select one of images to create virtual machine on the basis of it.</source>
-        <translation>Välj en av molntjänstprofilerna som du har registrerat för att skapa virtuella maskinen för.  Befintliga avbildningslistan kommer att uppdateras.  För att fortsätta, välj en av avbildningarna för att skapa en virtuella maskin baserat på den.</translation>
+        <translation>Välj en registrerad molntjänstprofil för att skapa en virtuell maskin. Avbildningslistan uppdateras. Välj sedan en avbildning som den virtuella maskinen ska baseras på.</translation>
     </message>
     <message>
         <source>&amp;Provider:</source>
@@ -17266,7 +17266,7 @@
     </message>
     <message>
         <source>Selects cloud service provider.</source>
-        <translation>Väljer leverantör av molntjänst.</translation>
+        <translation>Väljer molntjänstleverantör.</translation>
     </message>
     <message>
         <source>P&amp;rofile:</source>
@@ -17278,7 +17278,7 @@
     </message>
     <message>
         <source>Cloud Profile Manager</source>
-        <translation>Hantera molnprofiler</translation>
+        <translation>Hanterare för molnprofiler</translation>
     </message>
     <message>
         <source>Opens cloud profile manager...</source>
@@ -17294,7 +17294,7 @@
     </message>
     <message>
         <source>Lists all the cloud VM properties.</source>
-        <translation>Listar alla egenskaper för virtuella molnmaskiner.</translation>
+        <translation>Listar alla egenskaper för molnmaskiner.</translation>
     </message>
     <message>
         <source>&amp;Settings:</source>
@@ -17302,7 +17302,7 @@
     </message>
     <message>
         <source>Cloud virtual machine settings</source>
-        <translation>Inställningar för virtuell molnmaskin</translation>
+        <translation>Inställningar för molnmaskin</translation>
     </message>
 </context>
 <context>
