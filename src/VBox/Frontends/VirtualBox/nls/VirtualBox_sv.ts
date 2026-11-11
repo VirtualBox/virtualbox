@@ -3434,7 +3434,7 @@
     <message>
         <source>Running</source>
         <comment>MachineState</comment>
-        <translation>Kör</translation>
+        <translation>Körs</translation>
     </message>
     <message>
         <source>Paused</source>
@@ -3459,7 +3459,7 @@
     <message>
         <source>Taking Online Snapshot</source>
         <comment>MachineState</comment>
-        <translation>Tar nätbaserad ögonblicksbild</translation>
+        <translation>Tar ögonblicksbild medan maskinen körs</translation>
     </message>
     <message>
         <source>Taking Live Snapshot</source>
@@ -3654,7 +3654,7 @@
     <message>
         <source>USB Multi-Touch Tablet</source>
         <comment>PointingHIDType</comment>
-        <translation>USB-musplatta (Multi Touch)</translation>
+        <translation>USB-musplatta med multipekfunktion</translation>
     </message>
     <message>
         <source>None</source>
@@ -4134,22 +4134,22 @@
     <message>
         <source>IDE Primary Device 0</source>
         <comment>StorageSlot</comment>
-        <translation>IDE Primärenhet 0</translation>
+        <translation>IDE-primärenhet 0</translation>
     </message>
     <message>
         <source>IDE Primary Device 1</source>
         <comment>StorageSlot</comment>
-        <translation>IDE Primärenhet 1</translation>
+        <translation>IDE-primärenhet 1</translation>
     </message>
     <message>
         <source>IDE Secondary Device 0</source>
         <comment>StorageSlot</comment>
-        <translation>IDE Sekundärenhet 0</translation>
+        <translation>IDE-sekundärenhet 0</translation>
     </message>
     <message>
         <source>IDE Secondary Device 1</source>
         <comment>StorageSlot</comment>
-        <translation>IDE Sekundärenhet 1</translation>
+        <translation>IDE-sekundärenhet 1</translation>
     </message>
     <message>
         <source>SATA Port %1</source>
@@ -4224,7 +4224,7 @@
     <message>
         <source>Serial ports</source>
         <comment>DetailsElementType</comment>
-        <translation>Serieportar</translation>
+        <translation>Seriella portar</translation>
     </message>
     <message>
         <source>USB</source>
@@ -4344,7 +4344,7 @@
     <message>
         <source>Serial ports</source>
         <comment>InformationElementType</comment>
-        <translation>Serieportar</translation>
+        <translation>Seriella portar</translation>
     </message>
     <message>
         <source>USB</source>
@@ -4389,12 +4389,12 @@
     <message>
         <source>VMDK (Virtual Machine Disk)</source>
         <comment>UIMediumFormat</comment>
-        <translation>VMDK (virtuell maskin-disk)</translation>
+        <translation>VMDK (virtuell maskindisk)</translation>
     </message>
     <message>
         <source>VHD (Virtual Hard Disk)</source>
         <comment>UIMediumFormat</comment>
-        <translation>VHD (Virtuell hårddisk)</translation>
+        <translation>VHD (virtuell hårddisk)</translation>
     </message>
     <message>
         <source>HDD (Parallels Hard Disk)</source>
@@ -4404,7 +4404,7 @@
     <message>
         <source>QED (QEMU enhanced disk)</source>
         <comment>UIMediumFormat</comment>
-        <translation>QED (QEMU utökad disk)</translation>
+        <translation>QED (QEMU-utökad disk)</translation>
     </message>
     <message>
         <source>QCOW (QEMU Copy-On-Write)</source>
@@ -4443,12 +4443,12 @@
     <message>
         <source>Provisioning</source>
         <comment>CloudMachineState</comment>
-        <translation>Provisionerar</translation>
+        <translation>Förbereder</translation>
     </message>
     <message>
         <source>Running</source>
         <comment>CloudMachineState</comment>
-        <translation>Kör</translation>
+        <translation>Körs</translation>
     </message>
     <message>
         <source>Starting</source>
@@ -4473,12 +4473,12 @@
     <message>
         <source>Terminating</source>
         <comment>CloudMachineState</comment>
-        <translation>Stänger av</translation>
+        <translation>Avslutas</translation>
     </message>
     <message>
         <source>Terminated</source>
         <comment>CloudMachineState</comment>
-        <translation>Avstängd</translation>
+        <translation>Avslutad</translation>
     </message>
     <message>
         <source>Aborted-Saved</source>
@@ -4578,27 +4578,27 @@
     <message>
         <source>Terminating</source>
         <comment>GuestSessionStatus</comment>
-        <translation>Stänger av</translation>
+        <translation>Avslutas</translation>
     </message>
     <message>
         <source>Terminated</source>
         <comment>GuestSessionStatus</comment>
-        <translation>Avstängd</translation>
+        <translation>Avslutad</translation>
     </message>
     <message>
         <source>Timed Out (Killed)</source>
         <comment>GuestSessionStatus</comment>
-        <translation>Tidsgräns överstigen (dödad)</translation>
+        <translation>Tidsgränsen överskreds (avslutad)</translation>
     </message>
     <message>
         <source>Timed Out (Abnormally)</source>
         <comment>GuestSessionStatus</comment>
-        <translation>Tidsgräns överstigen (onormalt)</translation>
+        <translation>Tidsgränsen överskreds (onormalt)</translation>
     </message>
     <message>
         <source>Down</source>
         <comment>GuestSessionStatus</comment>
-        <translation>Nere</translation>
+        <translation>Avslutad</translation>
     </message>
     <message>
         <source>Error</source>
@@ -4618,37 +4618,37 @@
     <message>
         <source>Terminating</source>
         <comment>ProcessStatus</comment>
-        <translation>Stänger av</translation>
+        <translation>Avslutas</translation>
     </message>
     <message>
         <source>Terminated (Normally)</source>
         <comment>ProcessStatus</comment>
-        <translation>Avstängd (normalt)</translation>
+        <translation>Avslutad (normalt)</translation>
     </message>
     <message>
         <source>Terminated (Signal)</source>
         <comment>ProcessStatus</comment>
-        <translation>Avstängd (signal)</translation>
+        <translation>Avslutad (signal)</translation>
     </message>
     <message>
         <source>Terminated (Abnormally)</source>
         <comment>ProcessStatus</comment>
-        <translation>Avstängd (onormalt)</translation>
+        <translation>Avslutad (onormalt)</translation>
     </message>
     <message>
         <source>Timed Out (Killed)</source>
         <comment>ProcessStatus</comment>
-        <translation>Tidsgräns överstigen (dödad)</translation>
+        <translation>Tidsgränsen överskreds (avslutad)</translation>
     </message>
     <message>
         <source>Timed Out (Abnormally)</source>
         <comment>ProcessStatus</comment>
-        <translation>Tidsgräns överstigen (onormalt)</translation>
+        <translation>Tidsgränsen överskreds (onormalt)</translation>
     </message>
     <message>
         <source>Down</source>
         <comment>ProcessStatus</comment>
-        <translation>Nere</translation>
+        <translation>Avslutad</translation>
     </message>
     <message>
         <source>Error</source>
@@ -4658,7 +4658,7 @@
     <message>
         <source>Follow System Settings</source>
         <comment>color theme</comment>
-        <translation>Följ systeminställningar</translation>
+        <translation>Följ systeminställningarna</translation>
     </message>
     <message>
         <source>Light</source>
@@ -4785,7 +4785,7 @@
     </message>
     <message>
         <source>NEGOTIATE</source>
-        <translation>FÖRHANDLA</translation>
+        <translation>NEGOTIATE</translation>
     </message>
     <message>
         <source>USB Multi-Touch TouchScreen and TouchPad</source>
@@ -4810,7 +4810,7 @@
     <message>
         <source>Intel 82583V Gigabit Network Connection [EXPERIMENTAL]</source>
         <comment>NetworkAdapterType</comment>
-        <translation>Intel 82583V Gigabit Network-anslutning [EXPERIMENTELL]</translation>
+        <translation>Intel 82583V Gigabit-nätverksanslutning [EXPERIMENTELL]</translation>
     </message>
 </context>
 <context>
