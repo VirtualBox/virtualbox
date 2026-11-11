@@ -14413,8 +14413,8 @@
     <message numerus="yes">
         <source>Warning: You are taking a snapshot of a running machine which has %n immutable image(s) attached to it. As long as you are working from this snapshot the immutable image(s) will not be reset to avoid loss of data.</source>
         <translation>
-            <numerusform>Varning: Du tar en ögonblicksbild av en maskin som körs och har %n oföränderlig avbildning ansluten. Så länge du arbetar från den här ögonblicksbilden återställs inte den oföränderliga avbildningen, för att undvika dataförlust.</numerusform>
-            <numerusform>Varning: Du tar en ögonblicksbild av en maskin som körs och har %n oföränderliga avbildningar anslutna. Så länge du arbetar från den här ögonblicksbilden återställs inte de oföränderliga avbildningarna, för att undvika dataförlust.</numerusform>
+            <numerusform>Varning: Du tar en ögonblicksbild av en maskin som är igång och har %n oföränderlig avbildning ansluten. Så länge du arbetar från den här ögonblicksbilden återställs inte den oföränderliga avbildningen, för att undvika dataförlust.</numerusform>
+            <numerusform>Varning: Du tar en ögonblicksbild av en maskin som är igång och har %n oföränderliga avbildningar anslutna. Så länge du arbetar från den här ögonblicksbilden återställs inte de oföränderliga avbildningarna, för att undvika dataförlust.</numerusform>
         </translation>
     </message>
     <message>
@@ -14431,7 +14431,7 @@
     </message>
     <message>
         <source>Ok</source>
-        <translation>Ok</translation>
+        <translation>OK</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -14455,11 +14455,11 @@
     </message>
     <message>
         <source>Accept</source>
-        <translation>Acceptera</translation>
+        <translation>Godkänn</translation>
     </message>
     <message>
         <source>Accept (%1)</source>
-        <translation>Acceptera (%1)</translation>
+        <translation>Godkänn (%1)</translation>
     </message>
     <message>
         <source>Cancel (%1)</source>
