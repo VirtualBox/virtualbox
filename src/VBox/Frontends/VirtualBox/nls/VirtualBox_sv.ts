@@ -8107,11 +8107,11 @@
     </message>
     <message>
         <source>Opens file selection dialog so that a location for the disk file can be selected.</source>
-        <translation>Öppnar filväljardialog så att en plats för diskfilen kan väljas.</translation>
+        <translation>Öppnar filväljaren så att du kan välja en plats för diskfilen.</translation>
     </message>
     <message>
         <source>Hard Disk File Location and Size</source>
-        <translation>Hårddiskfilens plats och storlek</translation>
+        <translation>Plats och storlek för hårddiskfil</translation>
     </message>
     <message>
         <source>Specify a location for new virtual hard disk file...</source>
