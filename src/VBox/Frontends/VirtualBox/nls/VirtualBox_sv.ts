@@ -5400,7 +5400,7 @@
     <message>
         <source>%1 details</source>
         <comment>like &apos;General details&apos; or &apos;Storage details&apos;</comment>
-        <translation>%1-detaljer</translation>
+        <translation>Detaljer: %1</translation>
     </message>
 </context>
 <context>
