@@ -15268,7 +15268,7 @@
     </message>
     <message>
         <source>Invalid password pair</source>
-        <translation>Ogiltigt lösenordspar</translation>
+        <translation>Lösenorden stämmer inte överens</translation>
     </message>
     <message>
         <source>Username is valid</source>
