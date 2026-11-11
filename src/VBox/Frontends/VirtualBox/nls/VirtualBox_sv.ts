@@ -3147,19 +3147,19 @@
     <name>UIChooserSearchWidget</name>
     <message>
         <source>Navigate to the next item among the search results</source>
-        <translation>Navigera till nästa post i sökresultaten</translation>
+        <translation>Gå till nästa träff i sökresultaten</translation>
     </message>
     <message>
         <source>Navigate to the previous item among the search results</source>
-        <translation>Navigera till föregående post i sökresultaten</translation>
+        <translation>Gå till föregående träff i sökresultaten</translation>
     </message>
     <message>
         <source>Enter a search term to be used during virtual machine search</source>
-        <translation>Ange en sökterm att använda vid sökning efter virtuella maskiner</translation>
+        <translation>Ange en sökterm för att söka efter virtuella maskiner</translation>
     </message>
     <message>
         <source>Close the search widget</source>
-        <translation>Stäng sökwidgeten</translation>
+        <translation>Stäng sökrutan</translation>
     </message>
 </context>
 <context>
