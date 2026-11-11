@@ -17087,7 +17087,7 @@
     </message>
     <message>
         <source>Unverified signature by %1!</source>
-        <translation>Overifierad signatur av %1!</translation>
+        <translation>Ej verifierad signatur av %1!</translation>
     </message>
     <message>
         <source>Self signed by %1 (trusted)</source>
@@ -17099,7 +17099,7 @@
     </message>
     <message>
         <source>Unverified self signed signature by %1!</source>
-        <translation>Overifierad självsignerad signatur av %1!</translation>
+        <translation>Ej verifierad självsignerad signatur av %1!</translation>
     </message>
     <message>
         <source>Local File System</source>
@@ -17123,7 +17123,7 @@
     </message>
     <message>
         <source>These are the the suggested settings of the cloud VM import procedure, they are influencing the resulting local VM instance. You can change many of the properties shown by double-clicking on the items and disable others using the check boxes below.</source>
-        <translation>Dessa är de föreslagna inställningarna för importprocessen för virtuella molnmaskiner som påverkar den resulterande lokala virtuella maskininstansen. Du kan ändra många av egenskaperna genom att dubbelklicka på posterna och inaktivera andra genom kryssrutorna nedan.</translation>
+        <translation>Dessa är de föreslagna inställningarna för importprocessen för molnmaskiner som påverkar den resulterande lokala virtuella maskininstansen. Du kan ändra många av egenskaperna genom att dubbelklicka på posterna och inaktivera andra genom kryssrutorna nedan.</translation>
     </message>
     <message>
         <source>Source</source>
@@ -17155,11 +17155,11 @@
     </message>
     <message>
         <source>Include only NAT network adapter MAC addresses</source>
-        <translation>Inkludera endast NAT-nätverkskorts hårdvaruadresser</translation>
+        <translation>Inkludera endast hårdvaruadresser för NAT-nätverkskort</translation>
     </message>
     <message>
         <source>Include only NAT network adapter MAC addresses during importing.</source>
-        <translation>Inkludera endast NAT-nätverkskorts hårdvaruadresser under import.</translation>
+        <translation>Inkludera endast hårdvaruadresser för NAT-nätverkskort under import.</translation>
     </message>
     <message>
         <source>Generate new MAC addresses for all network adapters</source>
@@ -17207,7 +17207,7 @@
     </message>
     <message>
         <source>Cloud Profile Manager</source>
-        <translation>Hantera molnprofiler</translation>
+        <translation>Hanterare för molnprofiler</translation>
     </message>
     <message>
         <source>Opens cloud profile manager...</source>
