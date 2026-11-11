@@ -13591,12 +13591,12 @@
     <message>
         <source>online</source>
         <comment>snapshot</comment>
-        <translation>ansluten</translation>
+        <translation>körande</translation>
     </message>
     <message>
         <source>offline</source>
         <comment>snapshot</comment>
-        <translation>frånkopplad</translation>
+        <translation>avstängd</translation>
     </message>
     <message>
         <source>Taken at %1</source>
