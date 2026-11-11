@@ -5616,7 +5616,7 @@
     </message>
     <message>
         <source>VirtualBox Extension Pack</source>
-        <translation>VirtualBox tilläggspaket</translation>
+        <translation>VirtualBox-tilläggspaket</translation>
     </message>
 </context>
 <context>
@@ -5668,7 +5668,7 @@
     </message>
     <message>
         <source>Contains selected file path.</source>
-        <translation>Innehåller angiven filsökväg.</translation>
+        <translation>Innehåller den valda filsökvägen.</translation>
     </message>
 </context>
 <context>
@@ -6273,7 +6273,7 @@
     </message>
     <message>
         <source>The actual default path value will be displayed after accepting the changes and opening this window again.</source>
-        <translation>Det faktiska värdet för standardsökväg kommer att visas efter att ändringarna har godkänts och detta fönster öppnats igen.</translation>
+        <translation>Det faktiska värdet för standardsökvägen visas när ändringarna har godkänts och fönstret öppnas igen.</translation>
     </message>
     <message>
         <source>&lt;not selected&gt;</source>
