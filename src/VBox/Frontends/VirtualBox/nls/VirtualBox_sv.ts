@@ -5117,7 +5117,7 @@
     <message>
         <source>USB Controller Inaccessible</source>
         <comment>details (usb)</comment>
-        <translation>USB-styrkort inte tillgängligt</translation>
+        <translation>USB-styrkortet är inte tillgängligt</translation>
     </message>
     <message>
         <source>Shared Folders</source>
@@ -5127,7 +5127,7 @@
     <message>
         <source>None</source>
         <comment>details (shared folders)</comment>
-        <translation>Ingen</translation>
+        <translation>Inga</translation>
     </message>
     <message>
         <source>Menu-bar</source>
