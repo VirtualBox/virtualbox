@@ -16030,7 +16030,7 @@
     </message>
     <message>
         <source>When checked, show line numbers</source>
-        <translation>När kryssad, visa radnummer</translation>
+        <translation>När alternativet är markerat visas radnummer</translation>
     </message>
     <message>
         <source>Wrap Lines</source>
@@ -16038,7 +16038,7 @@
     </message>
     <message>
         <source>When checked, wrap lines</source>
-        <translation>När kryssad, radbryt rader</translation>
+        <translation>När alternativet är markerat radbryts rader</translation>
     </message>
     <message>
         <source>Font Size</source>
@@ -16074,7 +16074,7 @@
     </message>
     <message>
         <source>When checked, perform case sensitive search</source>
-        <translation>När kryssad, genomför skiftlägeskänslig sökning</translation>
+        <translation>När alternativet är markerat används skiftlägeskänslig sökning</translation>
     </message>
     <message>
         <source>Ma&amp;tch Whole Word</source>
@@ -16082,7 +16082,7 @@
     </message>
     <message>
         <source>When checked, search matches only complete words</source>
-        <translation>När kryssad komemr endast hela ord att matcha sökningen</translation>
+        <translation>När alternativet är markerat matchar sökningen endast hela ord</translation>
     </message>
     <message>
         <source>&amp;Highlight All</source>
@@ -16090,7 +16090,7 @@
     </message>
     <message>
         <source>When checked, all occurence of the search text are highlighted</source>
-        <translation>När kryssad kommer alla förekomster för söktexten att framhävas</translation>
+        <translation>När alternativet är markerat framhävs alla förekomster av söktexten</translation>
     </message>
     <message>
         <source>Filtered</source>
@@ -16142,7 +16142,7 @@
     </message>
     <message>
         <source>&lt;p&gt;No log files for the machine %1 found. Press the &lt;b&gt;Reload&lt;/b&gt; button to reload the log folder &lt;nobr&gt;&lt;b&gt;%2&lt;/b&gt;&lt;/nobr&gt;.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Inga loggfiler för maskinen %1 hittades. Tryck på &lt;b&gt;Uppdatera&lt;/b&gt;-knappen för att uppdateras loggmappen &lt;nobr&gt;&lt;b&gt;%2&lt;/b&gt;&lt;/nobr&gt;.&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Inga loggfiler hittades för maskinen %1. Tryck på knappen &lt;b&gt;Uppdatera&lt;/b&gt; för att läsa in loggmappen &lt;nobr&gt;&lt;b&gt;%2&lt;/b&gt; igen.&lt;/nobr&gt;&lt;/p&gt;</translation>
     </message>
     <message>
         <source>%1 - Log Viewer</source>
@@ -16404,11 +16404,11 @@
     </message>
     <message>
         <source>Minimum number of virtual CPUs</source>
-        <translation>Minimum antal virtuella CPUer</translation>
+        <translation>Minsta antal virtuella processorer</translation>
     </message>
     <message>
         <source>Maximum number of virtual CPUs</source>
-        <translation>Maximum antal virtuella CPUer</translation>
+        <translation>Största antal virtuella processorer</translation>
     </message>
 </context>
 <context>
@@ -16761,27 +16761,27 @@
     </message>
     <message>
         <source>When chosen, all the virtual disks of the source vm are also cloned.</source>
-        <translation>När kryssad kommer alla virtuella diskar för källmaskinen också att klonas.</translation>
+        <translation>När alternativet är markerat klonas även alla virtuella diskar i källmaskinen.</translation>
     </message>
     <message>
         <source>When chosen, the cloned vm will save space by sharing the source VM&apos;s disk images.</source>
-        <translation>När kryssad kommer klonade virtuella maskinen att spara utrymme genom att dela källmaskinens diskavbildningar.</translation>
+        <translation>När alternativet är markerat sparar den klonade virtuella maskinen utrymme genom att dela källmaskinens diskavbildningar.</translation>
     </message>
     <message>
         <source>When chosen, only the current state of the source vm is cloned.</source>
-        <translation>När kryssad kommer endast det aktuella tillståndet för källmaskinen att klonas.</translation>
+        <translation>När alternativet är markerat klonas endast källmaskinens aktuella tillstånd.</translation>
     </message>
     <message>
         <source>When chosen, all the saved states of the source vm are also cloned.</source>
-        <translation>När kryssad kommer alla sparade tillstånd för källmaskinen också att klonas.</translation>
+        <translation>När alternativet är markerat klonas även alla sparade tillstånd i källmaskinen.</translation>
     </message>
     <message>
         <source>When checked, disk names will be preserved during cloning.</source>
-        <translation>När kryssad kommer disknamn att behållas under kloning.</translation>
+        <translation>När alternativet är markerat bevaras disknamnen vid kloning.</translation>
     </message>
     <message>
         <source>When checked, hardware UUIDs will be preserved during cloning.</source>
-        <translation>När kryssad kommer hårdvaru-UUIDer att behållas under kloning.</translation>
+        <translation>När alternativet är markerat bevaras maskinvaru-UUID:erna vid kloning.</translation>
     </message>
     <message>
         <source>Clone name is valid</source>
