@@ -5528,7 +5528,7 @@
     </message>
     <message>
         <source>&amp;Raise Window Under Mouse Pointer</source>
-        <translation>&amp;Höj fönstret under muspekaren</translation>
+        <translation>&amp;Visa fönstret under muspekaren längst fram</translation>
     </message>
     <message>
         <source>When checked, machine windows will be raised when the mouse pointer moves over them.</source>
@@ -5548,7 +5548,7 @@
     </message>
     <message>
         <source>Machine windows will be raised when the mouse pointer moves over them</source>
-        <translation>Maskinfönstren kommer att höjas när muspekaren flyttas över dem</translation>
+        <translation>Maskinfönstren visas längst fram när muspekaren flyttas över dem</translation>
     </message>
     <message>
         <source>Screen saver of the host OS is disabled</source>
@@ -5579,7 +5579,7 @@
     </message>
     <message>
         <source>The VM will be given access to the 3D graphics capabilities available on the host</source>
-        <translation>VM kommer att få tillgång till de 3D-grafikfunktioner som finns tillgängliga på värden</translation>
+        <translation>Den virtuella maskinen får tillgång till värdens tillgängliga 3D-grafikfunktioner</translation>
     </message>
 </context>
 <context>
@@ -5612,7 +5612,7 @@
     <name>UIDownloaderExtensionPack</name>
     <message>
         <source>Select folder to save %1 to</source>
-        <translation>Välj mapp att spara %1 till</translation>
+        <translation>Välj en mapp där %1 ska sparas</translation>
     </message>
     <message>
         <source>VirtualBox Extension Pack</source>
@@ -5627,7 +5627,7 @@
     </message>
     <message>
         <source>Select folder to save Guest Additions image to</source>
-        <translation>Välj en mapp att spara avbildning för Gästtillägg till</translation>
+        <translation>Välj en mapp där Gästtilläggens avbildning ska sparas</translation>
     </message>
 </context>
 <context>
@@ -5657,7 +5657,7 @@
     </message>
     <message>
         <source>Enable the dragging method of copying data between file manager tools</source>
-        <translation>Aktivera dra-metoden för att kopiera data mellan filhanteringsverktyg</translation>
+        <translation>Aktivera dra-och-släpp-metoden för att kopiera data mellan filhanteringsverktyg</translation>
     </message>
 </context>
 <context>
@@ -5701,7 +5701,7 @@
     <message>
         <source>Result&amp;nbsp;Detail:</source>
         <comment>error info</comment>
-        <translation>Resultatdetaij:</translation>
+        <translation>Resultatdetalj:</translation>
     </message>
 </context>
 <context>
@@ -5724,11 +5724,11 @@
     </message>
     <message>
         <source>&amp;Processing Cap</source>
-        <translation>&amp;Processeringsgräns</translation>
+        <translation>&amp;Processorgräns</translation>
     </message>
     <message>
         <source>Percentage of processing time allowed per virtual CPU</source>
-        <translation>Procentandel av tillåten processeringstid per virtuell CPU</translation>
+        <translation>Tillåten procentandel processortid per virtuell CPU</translation>
     </message>
     <message>
         <source>Minimum execution cap</source>
@@ -5918,7 +5918,7 @@
     </message>
     <message>
         <source>List directories on top</source>
-        <translation>Lista kataloger överst</translation>
+        <translation>Visa kataloger först</translation>
     </message>
     <message>
         <source>List directories before files</source>
@@ -5934,11 +5934,11 @@
     </message>
     <message>
         <source>Human readable sizes</source>
-        <translation>Mänskligt läsbara storlekar</translation>
+        <translation>Lättlästa storlekar</translation>
     </message>
     <message>
         <source>Show file/directory sizes in human readable format rather than in bytes</source>
-        <translation>Visa storlekar för filer/kataloger i mänskligt läsbara format istället för i byte</translation>
+        <translation>Visa storlekar för filer och kataloger i lättläst format i stället för i byte</translation>
     </message>
     <message>
         <source>Password</source>
@@ -5982,7 +5982,7 @@
     </message>
     <message>
         <source>Delete confirmation can be disabled/enabled also from the Options panel.</source>
-        <translation>Bekräftelse för borttagning kan inaktiveras/aktiveras från Alternativ-panelen.</translation>
+        <translation>Bekräftelse av borttagning kan även inaktiveras och aktiveras på panelen Alternativ.</translation>
     </message>
     <message>
         <source>Name</source>
@@ -6094,7 +6094,7 @@
     </message>
     <message>
         <source>&lt;b&gt;Birth:&lt;/b&gt; %1&lt;br/&gt;</source>
-        <translation>&lt;b&gt;Födelse:&lt;/b&gt; %1&lt;br/&gt;</translation>
+        <translation>&lt;b&gt;Skapad:&lt;/b&gt; %1&lt;br/&gt;</translation>
     </message>
     <message>
         <source>&lt;b&gt;Change:&lt;/b&gt; %1&lt;br/&gt;</source>
@@ -6210,11 +6210,11 @@
     </message>
     <message>
         <source>Guest control session is running.</source>
-        <translation>Gästkontrollsession körs.</translation>
+        <translation>Gästkontrollsessionen körs.</translation>
     </message>
     <message>
         <source>Some error has occurred. Please check the log panel.</source>
-        <translation>Några fel har inträffat. Kontrollera loggpanelen.</translation>
+        <translation>Ett fel har inträffat. Kontrollera loggpanelen.</translation>
     </message>
     <message>
         <source>File manager cannot work since no guest additions were detected.</source>
@@ -6238,7 +6238,7 @@
     </message>
     <message>
         <source>NewDirectory</source>
-        <translation>NyKatalog</translation>
+        <translation>Ny katalog</translation>
     </message>
     <message>
         <source>Interactive Column Widths</source>
@@ -6324,11 +6324,11 @@
     </message>
     <message>
         <source>Minimum font scale factor</source>
-        <translation>Minimum faktor för teckenstorlek</translation>
+        <translation>Minsta skalningsfaktor för teckenstorlek</translation>
     </message>
     <message>
         <source>Maximum font scale factor</source>
-        <translation>Maximum faktor för teckenstorlek</translation>
+        <translation>Största skalningsfaktor för teckenstorlek</translation>
     </message>
 </context>
 <context>
@@ -6376,7 +6376,7 @@
     </message>
     <message>
         <source>You have provided a proxy password. Please be aware that the password will be saved in plain text. You may wish to configure a system-wide proxy instead and not store application-specific settings.</source>
-        <translation>Du har angivet ett proxylösenord. Tänk på att lösenordet kommer att sparas i klartext. Du kanske vill konfigurera en systembred proxy istället och inte lagra programspecifika inställningar.</translation>
+        <translation>Du har angett ett proxylösenord. Observera att lösenordet sparas i klartext. Du kan i stället konfigurera en systemomfattande proxy och undvika att lagra programspecifika inställningar.</translation>
     </message>
 </context>
 <context>
@@ -8068,7 +8068,7 @@
     </message>
     <message>
         <source>Virtual Medium Selector</source>
-        <translation>Välj virtuellt media</translation>
+        <translation>Välj virtuellt medium</translation>
     </message>
     <message>
         <source>&amp;Cancel</source>
@@ -8092,7 +8092,7 @@
     </message>
     <message>
         <source>Shows a list of all registered media</source>
-        <translation>Visar en lista över allt registrerat media</translation>
+        <translation>Visar en lista över alla registrerade medier</translation>
     </message>
 </context>
 <context>
@@ -8174,7 +8174,7 @@
     </message>
     <message>
         <source>Maximum possible disk size</source>
-        <translation>Maximalt möjliga diskstorlek</translation>
+        <translation>Största möjliga diskstorlek</translation>
     </message>
     <message>
         <source>Disk size set to %1</source>
@@ -8240,7 +8240,7 @@
     </message>
     <message>
         <source>Popup menu %1</source>
-        <translation>Poppa upp meny %1</translation>
+        <translation>Visa snabbmeny %1</translation>
     </message>
     <message>
         <source>Enable Menu Bar</source>
@@ -11281,7 +11281,7 @@
     </message>
     <message>
         <source>The way this virtual adapter is attached to the real network of the host OS</source>
-        <translation>Hur denna virtuella adapter är ansluten till värd-OS:ets verkliga nätverk</translation>
+        <translation>Hur det virtuella nätverkskortet ansluts till värdoperativsystemets fysiska nätverk</translation>
     </message>
     <message>
         <source>Network adapter on the host system that traffic to and from this network card will go through</source>
@@ -11293,7 +11293,7 @@
     </message>
     <message>
         <source>Virtual network adapter on the host system that traffic to and from this network card will go through. You can create and remove adapters using the Network Manager tool in the virtual machine manager window.</source>
-        <translation>Virtuellt nätverkskort på värdsystemet som trafiken till och från detta nätverkskort passerar genom. Du kan skapa och ta bort kort med hjälp av verktyget Nätverkshanterare i fönstret Virtuell maskinhanterare.</translation>
+        <translation>Virtuellt nätverkskort på värdsystemet som trafiken till och från nätverkskortet passerar genom. Du kan skapa och ta bort kort med Nätverkshanteraren i fönstret Virtuell maskinhanterare.</translation>
     </message>
     <message>
         <source>Driver to be used with this network card</source>
@@ -11309,7 +11309,7 @@
     </message>
     <message>
         <source>Name of the host-only network that this network card will be connected to. You can add and remove networks using the Network Manager tool in the virtual machine manager window.</source>
-        <translation>Namnet på det värdbaserade nätverk som detta nätverkskort kommer att anslutas till. Du kan lägga till och ta bort nätverk med hjälp av verktyget Nätverkshanterare i fönstret Virtuell maskinhanterare.</translation>
+        <translation>Namnet på det endast-värd-nätverk som nätverkskortet ansluts till. Du kan lägga till och ta bort nätverk med Nätverkshanteraren i fönstret Virtuell maskinhanterare.</translation>
     </message>
 </context>
 <context>
@@ -11527,7 +11527,7 @@
     </message>
     <message>
         <source>Holds the name for this network.</source>
-        <translation>Innehåller namnet för detta nätverk.</translation>
+        <translation>Anger namnet på nätverket.</translation>
     </message>
     <message>
         <source>&amp;Provider:</source>
@@ -11535,7 +11535,7 @@
     </message>
     <message>
         <source>Holds the cloud provider for this network.</source>
-        <translation>Håller molnleverantören för detta nätverk.</translation>
+        <translation>Anger molnleverantören för nätverket.</translation>
     </message>
     <message>
         <source>P&amp;rofile:</source>
@@ -11543,7 +11543,7 @@
     </message>
     <message>
         <source>Holds the cloud profile for this network.</source>
-        <translation>Håller molnprofilen för detta nätverk.</translation>
+        <translation>Anger molnprofilen för nätverket.</translation>
     </message>
     <message>
         <source>&amp;Id:</source>
@@ -11551,7 +11551,7 @@
     </message>
     <message>
         <source>Holds the id for this network.</source>
-        <translation>Håller ett id för detta nätverk.</translation>
+        <translation>Anger nätverkets id.</translation>
     </message>
     <message>
         <source>Selects the id for this network.</source>
@@ -11575,7 +11575,7 @@
     </message>
     <message>
         <source>Holds the mask for this network.</source>
-        <translation>Håller masken för detta nätverk.</translation>
+        <translation>Anger nätmasken för nätverket.</translation>
     </message>
     <message>
         <source>&amp;Lower Bound:</source>
@@ -11583,7 +11583,7 @@
     </message>
     <message>
         <source>Holds the lower address bound for this network.</source>
-        <translation>Innehåller lägre adressgränsen för detta nätverk.</translation>
+        <translation>Anger den lägre adressgränsen för nätverket.</translation>
     </message>
     <message>
         <source>&amp;Upper Bound:</source>
@@ -11591,7 +11591,7 @@
     </message>
     <message>
         <source>Holds the upper address bound for this network.</source>
-        <translation>Innehåller övre adressgränsen för detta nätverk.</translation>
+        <translation>Anger den övre adressgränsen för nätverket.</translation>
     </message>
     <message>
         <source>&amp;Adapter</source>
@@ -11615,7 +11615,7 @@
     </message>
     <message>
         <source>Holds the host IPv4 address for this adapter.</source>
-        <translation>Håller värdens IPv4-adress för detta nätverkskort.</translation>
+        <translation>Anger värdens IPv4-adress för nätverkskortet.</translation>
     </message>
     <message>
         <source>IPv4 Network &amp;Mask:</source>
@@ -11623,7 +11623,7 @@
     </message>
     <message>
         <source>Holds the host IPv4 network mask for this adapter.</source>
-        <translation>Håller värdens IPv4-nätverksmask för detta nätverkskort.</translation>
+        <translation>Anger värdens IPv4-nätmask för nätverkskortet.</translation>
     </message>
     <message>
         <source>I&amp;Pv6 Address:</source>
@@ -11631,7 +11631,7 @@
     </message>
     <message>
         <source>Holds the host IPv6 address for this adapter if IPv6 is supported.</source>
-        <translation>Håller värdens IPv6-adress för detta nätverkskort om IPv6 stöds.</translation>
+        <translation>Anger värdens IPv6-adress för nätverkskortet, om IPv6 stöds.</translation>
     </message>
     <message>
         <source>IPv6 Prefix &amp;Length:</source>
@@ -11639,7 +11639,7 @@
     </message>
     <message>
         <source>Holds the host IPv6 prefix length for this adapter if IPv6 is supported.</source>
-        <translation>Håller värdens IPv6-prefixlängd för detta nätverkskort om IPv6 stöds.</translation>
+        <translation>Anger värdens IPv6-prefixlängd för nätverkskortet, om IPv6 stöds.</translation>
     </message>
     <message>
         <source>&amp;Enable Server</source>
@@ -11647,7 +11647,7 @@
     </message>
     <message>
         <source>When checked, the DHCP Server will be enabled for this network on machine start-up.</source>
-        <translation>När kryssad kommer DHCP-servern att aktiveras för detta nätverk vid maskinens uppstart.</translation>
+        <translation>När alternativet är markerat aktiveras DHCP-servern för nätverket när maskinen startas.</translation>
     </message>
     <message>
         <source>Server Add&amp;ress:</source>
@@ -11655,7 +11655,7 @@
     </message>
     <message>
         <source>Holds the address of the DHCP server servicing the network associated with this host-only adapter.</source>
-        <translation>Håller adressen för DHCP-servern som tjänstgör på nätverket associerat med detta endast-värd-nätverkskort.</translation>
+        <translation>Anger adressen till DHCP-servern som betjänar nätverket som är kopplat till det här endast-värd-nätverkskortet.</translation>
     </message>
     <message>
         <source>Server &amp;Mask:</source>
@@ -11663,7 +11663,7 @@
     </message>
     <message>
         <source>Holds the network mask of the DHCP server servicing the network associated with this host-only adapter.</source>
-        <translation>Innehåller nätverkets mask för DHCP-servern som tjänstgör på nätverket associerat med detta endast-värd-nätverkskort.</translation>
+        <translation>Anger nätmasken för DHCP-servern som betjänar nätverket som är kopplat till det här endast-värd-nätverkskortet.</translation>
     </message>
     <message>
         <source>&amp;Lower Address Bound:</source>
@@ -11671,7 +11671,7 @@
     </message>
     <message>
         <source>Holds the lower address bound offered by the DHCP server servicing the network associated with this host-only adapter.</source>
-        <translation>Innehåller lägre adressgränsen som erbjuds av DHCP-servern som tjänstgör på nätverket associerat med detta endast-värd-nätverkskort.</translation>
+        <translation>Anger den lägre adressgränsen som DHCP-servern erbjuder för nätverket som är kopplat till det här endast-värd-nätverkskortet.</translation>
     </message>
     <message>
         <source>&amp;Upper Address Bound:</source>
@@ -11679,7 +11679,7 @@
     </message>
     <message>
         <source>Holds the upper address bound offered by the DHCP server servicing the network associated with this host-only adapter.</source>
-        <translation>Innehåller övre adressgränsen som erbjuds av DHCP-servern som tjänstgör på nätverket associerat med detta endast-värd-nätverkskort.</translation>
+        <translation>Anger den övre adressgränsen som DHCP-servern erbjuder för nätverket som är kopplat till det här endast-värd-nätverkskortet.</translation>
     </message>
     <message>
         <source>Reset changes in current DHCP server details</source>
@@ -11703,7 +11703,7 @@
     </message>
     <message>
         <source>Holds the IPv4 prefix for this network.</source>
-        <translation>Håller IPv4-prefixet för detta nätverk.</translation>
+        <translation>Anger IPv4-prefixet för nätverket.</translation>
     </message>
     <message>
         <source>IPv&amp;6 Prefix:</source>
@@ -11711,7 +11711,7 @@
     </message>
     <message>
         <source>Holds the IPv6 prefix for this network.</source>
-        <translation>Håller IPv6-prefixet för detta nätverk.</translation>
+        <translation>Anger IPv6-prefixet för nätverket.</translation>
     </message>
     <message>
         <source>Enable &amp;DHCP</source>
@@ -11719,7 +11719,7 @@
     </message>
     <message>
         <source>When checked, this network will support DHCP.</source>
-        <translation>När kryssad har detta nätverk stöd för DHCP.</translation>
+        <translation>När alternativet är markerat har nätverket stöd för DHCP.</translation>
     </message>
     <message>
         <source>&amp;Enable IPv6</source>
@@ -11727,7 +11727,7 @@
     </message>
     <message>
         <source>When checked, this network will support IPv6.</source>
-        <translation>När kryssad har detta nätverk stöd för IPv6.</translation>
+        <translation>När alternativet är markerat har nätverket stöd för IPv6.</translation>
     </message>
     <message>
         <source>Advertise Default IPv6 &amp;Route</source>
@@ -11735,7 +11735,7 @@
     </message>
     <message>
         <source>When checked, this network will be advertised as the default IPv6 route.</source>
-        <translation>När kryssad kommer detta nätverk att annonseras som standardrutt för IPv6.</translation>
+        <translation>När alternativet är markerat annonseras nätverket som standardrutt för IPv6.</translation>
     </message>
     <message>
         <source>IPv&amp;4</source>
@@ -11995,7 +11995,7 @@
     <name>UINotificationProgress</name>
     <message>
         <source>Creating medium ...</source>
-        <translation>Skapar media ...</translation>
+        <translation>Skapar medium ...</translation>
     </message>
     <message>
         <source>&lt;b&gt;Location:&lt;/b&gt; %1&lt;br&gt;&lt;b&gt;Size:&lt;/b&gt; %2</source>
@@ -12003,19 +12003,19 @@
     </message>
     <message>
         <source>Copying medium ...</source>
-        <translation>Kopierar media ...</translation>
+        <translation>Kopierar medium ...</translation>
     </message>
     <message>
         <source>&lt;b&gt;From:&lt;/b&gt; %1&lt;br&gt;&lt;b&gt;To:&lt;/b&gt; %2</source>
-        <translation>&lt;b&gt;Från&lt;/b&gt; %1&lt;br&gt;&lt;b&gt;Till:&lt;/b&gt; %2</translation>
+        <translation>&lt;b&gt;Från:&lt;/b&gt; %1&lt;br&gt;&lt;b&gt;Till:&lt;/b&gt; %2</translation>
     </message>
     <message>
         <source>Moving medium ...</source>
-        <translation>Flyttar media ...</translation>
+        <translation>Flyttar medium ...</translation>
     </message>
     <message>
         <source>Resizing medium ...</source>
-        <translation>Storleksändrar media ...</translation>
+        <translation>Ändrar storlek på medium ...</translation>
     </message>
     <message>
         <source>Deleting medium storage ...</source>
@@ -12211,7 +12211,7 @@
     </message>
     <message>
         <source>Powering cloud VM off ...</source>
-        <translation>Stänger ner virtuell molnmaskin ...</translation>
+        <translation>Stänger av virtuell molnmaskin ...</translation>
     </message>
     <message>
         <source>Shutting cloud VM down ...</source>
@@ -13315,7 +13315,7 @@
     </message>
     <message>
         <source>Guest OS will not be able to write to the specified shared folder</source>
-        <translation>Gästoperativsystem kommer inte att kunna skriva till den angivna delade mappen</translation>
+        <translation>Gästoperativsystemet kan inte skriva till den angivna delade mappen</translation>
     </message>
     <message>
         <source>Guest OS will try to automatically mount the shared folder on startup</source>
@@ -13331,11 +13331,11 @@
     </message>
     <message>
         <source>&amp;Make Machine-permanent</source>
-        <translation>&amp;Gör maskin-permanent</translation>
+        <translation>&amp;Gör permanent för maskinen</translation>
     </message>
     <message>
         <source>This shared folder will be permanent to this guest machine</source>
-        <translation>Denna delade mapp kommer att vara permanent på denna gästmaskin</translation>
+        <translation>Den här delade mappen kommer att vara permanent för den här gästmaskinen</translation>
     </message>
     <message>
         <source>&amp;Make Global</source>
@@ -13406,7 +13406,7 @@
     </message>
     <message>
         <source>All shared folders accessible to this machine. Use &apos;net use x: \\vboxsvr\share&apos; to access a shared folder named &apos;share&apos; from a DOS-like OS, or &apos;mount -t vboxsf share mount_point&apos; to access it from a Linux OS. This feature requires Guest Additions.</source>
-        <translation>Alla delade mappar som är tillgängliga för den här maskinen. Använd ’net use x: \\vboxsvr\share’ för att komma åt en delad mapp med namnet ’share’ från ett DOS-liknande operativsystem, eller ’mount -t vboxsf share monteringspunkt’ för att komma åt den från ett Linux-operativsystem. Denna funktion kräver Gästtillägg.</translation>
+        <translation>Alla delade mappar som är tillgängliga för den här maskinen. Använd ’net use x: \\vboxsvr\share’ för att komma åt en delad mapp med namnet ’share’ från ett DOS-liknande operativsystem, eller ’mount -t vboxsf share mount_point’ för att komma åt den från ett Linux-operativsystem. Den här funktionen kräver Gästtillägg.</translation>
     </message>
     <message>
         <source>Add new shared folder</source>
@@ -13480,11 +13480,11 @@
     </message>
     <message>
         <source>Holds the snapshot name.</source>
-        <translation>Håller namn för ögonblicksbild.</translation>
+        <translation>Anger namnet på ögonblicksbilden.</translation>
     </message>
     <message>
         <source>Holds the snapshot description.</source>
-        <translation>Håller beskrivning för ögonblicksbild.</translation>
+        <translation>Anger beskrivningen av ögonblicksbilden.</translation>
     </message>
     <message>
         <source>Apply</source>
@@ -13516,7 +13516,7 @@
     </message>
     <message>
         <source>Snapshot name is empty</source>
-        <translation>Namnet för ögonblicksbilden är tom</translation>
+        <translation>Namnet på ögonblicksbilden är tomt</translation>
     </message>
     <message>
         <source>Enter a name for the new snapshot...</source>
@@ -13613,7 +13613,7 @@
     <name>UISnapshotPane</name>
     <message>
         <source>Contains the snapshot tree of the current virtual machine</source>
-        <translation>Innehåller ögonblicksbildträdet för aktuella virtuella maskinen</translation>
+        <translation>Innehåller ögonblicksbildsträdet för den aktuella virtuella maskinen</translation>
     </message>
     <message>
         <source>Name</source>
@@ -14413,8 +14413,8 @@
     <message numerus="yes">
         <source>Warning: You are taking a snapshot of a running machine which has %n immutable image(s) attached to it. As long as you are working from this snapshot the immutable image(s) will not be reset to avoid loss of data.</source>
         <translation>
-            <numerusform>Varning: Du tar en ögonblicksbild av en körande maskin som har %n oföränderlig avbildning ansluten till sig. Så länge som du arbetar från denna ögonblicksbild så kommer den oföränderliga avbildningen inte att återställas för att förhindra att data förloras.</numerusform>
-            <numerusform>Varning: Du tar en ögonblicksbild av en körande maskin som har %n oföränderliga avbildningar anslutna till sig. Så länge som du arbetar från dessa ögonblicksbilder så kommer de oföränderliga avbildningarna inte att återställas för att förhindra att data förloras.</numerusform>
+            <numerusform>Varning: Du tar en ögonblicksbild av en maskin som körs och har %n oföränderlig avbildning ansluten. Så länge du arbetar från den här ögonblicksbilden återställs inte den oföränderliga avbildningen, för att undvika dataförlust.</numerusform>
+            <numerusform>Varning: Du tar en ögonblicksbild av en maskin som körs och har %n oföränderliga avbildningar anslutna. Så länge du arbetar från den här ögonblicksbilden återställs inte de oföränderliga avbildningarna, för att undvika dataförlust.</numerusform>
         </translation>
     </message>
     <message>
@@ -14423,11 +14423,11 @@
     </message>
     <message>
         <source>Holds the snapshot name</source>
-        <translation>Håller ögonblicksbildnamnet</translation>
+        <translation>Anger namnet på ögonblicksbilden</translation>
     </message>
     <message>
         <source>Holds the snapshot description</source>
-        <translation>Håller beskrivning av ögonblicksbilden</translation>
+        <translation>Anger beskrivningen av ögonblicksbilden</translation>
     </message>
     <message>
         <source>Ok</source>
