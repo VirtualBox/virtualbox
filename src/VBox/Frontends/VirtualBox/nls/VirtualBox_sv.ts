@@ -7120,7 +7120,7 @@
     </message>
     <message>
         <source>All cables disconnected</source>
-        <translation>Alla kablar frånkopplade</translation>
+        <translation>Alla kablar är frånkopplade</translation>
     </message>
     <message>
         <source>Adapter %1 (%2)</source>
