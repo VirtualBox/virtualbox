@@ -12391,7 +12391,7 @@
     <name>UIPopupCenter</name>
     <message>
         <source>Click for full details</source>
-        <translation>Klicka för fullständiga detaljer</translation>
+        <translation>Klicka för mer information</translation>
     </message>
 </context>
 <context>
