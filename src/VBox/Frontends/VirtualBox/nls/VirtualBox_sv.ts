@@ -12889,15 +12889,15 @@
     </message>
     <message>
         <source>Maximum number of frames per second. Additional frames will be skipped. Reducing this value will increase the number of skipped frames and reduce the file size.</source>
-        <translation>Maximalt antal bildrutor per sekund. Övriga bildrutor hoppas över. Om du minskar detta värde ökar antalet bildrutor som hoppas över och filstorleken minskar.</translation>
+        <translation>Maximalt antal bildrutor per sekund. Ytterligare bildrutor hoppas över. Om du minskar detta värde ökar antalet bildrutor som hoppas över och filstorleken minskar.</translation>
     </message>
     <message>
         <source>fps</source>
-        <translation>bilder/s</translation>
+        <translation>bildrutor/s</translation>
     </message>
     <message>
         <source>%1 fps</source>
-        <translation>%1 bilder/s</translation>
+        <translation>%1 bildrutor/s</translation>
     </message>
     <message>
         <source>Minimum recording frame rate</source>
