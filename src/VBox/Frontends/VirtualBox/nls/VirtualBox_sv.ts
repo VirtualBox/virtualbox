@@ -10890,7 +10890,7 @@
     <name>UIMiniToolBar</name>
     <message>
         <source>Always show the toolbar</source>
-        <translation>Visa alltid verktygsraden</translation>
+        <translation>Visa alltid verktygsfältet</translation>
     </message>
     <message>
         <source>Minimize Window</source>
