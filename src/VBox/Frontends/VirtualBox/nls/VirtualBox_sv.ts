@@ -6440,7 +6440,7 @@
     <name>UIGuestProcessControlWidget</name>
     <message>
         <source>Session/Process ID</source>
-        <translation>Sessions-/process-ID</translation>
+        <translation>Session-/process-ID</translation>
     </message>
     <message>
         <source>Session Name/Process Command</source>
@@ -6463,7 +6463,7 @@
     </message>
     <message>
         <source>Process Status</source>
-        <translation>Processtatus</translation>
+        <translation>Status för process</translation>
     </message>
     <message>
         <source>Executable Path</source>
