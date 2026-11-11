@@ -2010,7 +2010,7 @@
     </message>
     <message>
         <source>Cloud Console Manager</source>
-        <translation>Molnkonsolhanterare</translation>
+        <translation>Hanterare för molnkonsoler</translation>
     </message>
     <message>
         <source>Add new cloud console application</source>
@@ -3189,11 +3189,11 @@
     </message>
     <message>
         <source>Reset changes in current cloud console details</source>
-        <translation>Nollställ detaljändringar i aktuell molnkonsol</translation>
+        <translation>Nollställ ändringar i informationen om den aktuella molnkonsolen</translation>
     </message>
     <message>
         <source>Apply changes in current cloud console details</source>
-        <translation>Tillämpa detaljändringar i aktuell molnkonsol</translation>
+        <translation>Tillämpa ändringar i informationen om den aktuella molnkonsolen</translation>
     </message>
     <message>
         <source>Close dialog without saving</source>
@@ -3225,31 +3225,31 @@
     </message>
     <message>
         <source>Enter a name for this console application...</source>
-        <translation>Ange ett namn för detta konsolprogram...</translation>
+        <translation>Ange ett namn för det här konsolprogrammet...</translation>
     </message>
     <message>
         <source>Enter a path for this console application...</source>
-        <translation>Ange en sökväg för detta konsolprogram...</translation>
+        <translation>Ange en sökväg för det här konsolprogrammet...</translation>
     </message>
     <message>
         <source>Enter an argument for this console application...</source>
-        <translation>Ange ett argument för detta konsolprogram...</translation>
+        <translation>Ange ett argument för det här konsolprogrammet...</translation>
     </message>
     <message>
         <source>Enter a name for this console profile...</source>
-        <translation>Ange ett namn för denna konsolprofil...</translation>
+        <translation>Ange ett namn för den här konsolprofilen...</translation>
     </message>
     <message>
         <source>Enter an argument for this console profile...</source>
-        <translation>Ange ett argument för denna konsolprofil...</translation>
+        <translation>Ange ett argument för den här konsolprofilen...</translation>
     </message>
     <message>
         <source>Reset changes in current console details</source>
-        <translation>Nollställ detaljändringar i aktuell konsol</translation>
+        <translation>Nollställ ändringar i informationen om den aktuella konsolen</translation>
     </message>
     <message>
         <source>Apply changes in current console details</source>
-        <translation>Tillämpa detaljändringar i aktuell konsol</translation>
+        <translation>Tillämpa ändringar i informationen om den aktuella konsolen</translation>
     </message>
     <message>
         <source>Add Application</source>
@@ -3265,7 +3265,7 @@
     </message>
     <message>
         <source>List in Menu</source>
-        <translation>Lista i menyn</translation>
+        <translation>Visa i menyn</translation>
     </message>
 </context>
 <context>
