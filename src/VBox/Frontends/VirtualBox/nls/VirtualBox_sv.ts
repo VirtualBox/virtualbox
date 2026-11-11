@@ -3209,7 +3209,7 @@
     </message>
     <message>
         <source>Close Window (%1)</source>
-        <translation>Stäng fönster (%1)</translation>
+        <translation>Stäng fönstret (%1)</translation>
     </message>
     <message>
         <source>Name:</source>
@@ -7854,11 +7854,11 @@
     </message>
     <message>
         <source>Reset changes in current medium details</source>
-        <translation>Nollställ ändringar i aktuella mediadetaljer</translation>
+        <translation>Nollställ ändringar av informationen om aktuellt medium</translation>
     </message>
     <message>
         <source>Apply changes in current medium details</source>
-        <translation>Tillämpa ändringar i aktuella mediadetaljer</translation>
+        <translation>Tillämpa ändringar av informationen om aktuellt medium</translation>
     </message>
     <message>
         <source>Close dialog without saving</source>
@@ -11547,15 +11547,15 @@
     </message>
     <message>
         <source>&amp;Id:</source>
-        <translation>&amp;Id:</translation>
+        <translation>&amp;ID:</translation>
     </message>
     <message>
         <source>Holds the id for this network.</source>
-        <translation>Anger nätverkets id.</translation>
+        <translation>Anger nätverkets ID.</translation>
     </message>
     <message>
         <source>Selects the id for this network.</source>
-        <translation>Väljer ett id för detta nätverk.</translation>
+        <translation>Väljer ett ID för det här nätverket.</translation>
     </message>
     <message>
         <source>Reset changes in current interface details</source>
@@ -11579,7 +11579,7 @@
     </message>
     <message>
         <source>&amp;Lower Bound:</source>
-        <translation>&amp;Lägre gräns:</translation>
+        <translation>&amp;Nedre gräns:</translation>
     </message>
     <message>
         <source>Holds the lower address bound for this network.</source>
@@ -11619,7 +11619,7 @@
     </message>
     <message>
         <source>IPv4 Network &amp;Mask:</source>
-        <translation>&amp;Mask för IPv4-nätverk:</translation>
+        <translation>IPv4-nät&amp;mask:</translation>
     </message>
     <message>
         <source>Holds the host IPv4 network mask for this adapter.</source>
@@ -11780,7 +11780,7 @@
     </message>
     <message>
         <source>IPv4 Network Mask</source>
-        <translation>Mask för IPv4-nätverk</translation>
+        <translation>IPv4-nätmask</translation>
     </message>
     <message>
         <source>Not set</source>
@@ -11869,7 +11869,7 @@
     </message>
     <message>
         <source>Select Network ID</source>
-        <translation>Välj nätverks-id</translation>
+        <translation>Välj nätverks-ID</translation>
     </message>
 </context>
 <context>
@@ -14850,7 +14850,7 @@
     </message>
     <message>
         <source>&amp;Vendor ID</source>
-        <translation>Tillv&amp;erkar-id</translation>
+        <translation>Tillv&amp;erkar-ID</translation>
     </message>
     <message>
         <source>Vendor ID filter. The exact match string format is &apos;XXXX&apos; where &apos;X&apos; is a hexadecimal digit. An empty string will match any value.</source>
@@ -14858,7 +14858,7 @@
     </message>
     <message>
         <source>&amp;Product ID</source>
-        <translation>&amp;Produkt-id</translation>
+        <translation>&amp;Produkt-ID</translation>
     </message>
     <message>
         <source>Product ID filter. The exact match string format is &apos;XXXX&apos; where &apos;X&apos; is a hexadecimal digit. An empty string will match any value.</source>
@@ -14870,7 +14870,7 @@
     </message>
     <message>
         <source>Revision number filter. The exact match string format is &apos;IIFF&apos; where &apos;I&apos; is a decimal digit of the integer part and &apos;F&apos; is a decimal digit of the fractional part. An empty string will match any value.</source>
-        <translation>Filter för revisionsnummer. Det exakt matchande strängformatet är ’IIFF’, där ’I’ är en decimal siffra i heltalets del och ’F’ är en decimal siffra i bråkdelens del. En tom sträng matchar alla värden.</translation>
+        <translation>Filter för revisionsnummer. Det exakt matchande strängformatet är ’IIFF’, där ’I’ är en decimalsiffra i heltalsdelen och ’F’ är en decimalsiffra i bråkdelen. En tom sträng matchar alla värden.</translation>
     </message>
     <message>
         <source>&amp;Manufacturer</source>
@@ -14910,7 +14910,7 @@
     </message>
     <message>
         <source>Coverage of the USB filter. Defines whether it&apos;s applied to devices attached locally to the host computer (No), to a VRDP client&apos;s computer (Yes), or both (Any).</source>
-        <translation>Täckning för USB-filtret. Definierar om det ska tillämpas på enheter som är anslutna lokalt till värddatorn (Nej), till en VRDP-klients dator (Ja) eller båda (Alla).</translation>
+        <translation>USB-filtrets räckvidd. Anger om det tillämpas på enheter som är anslutna lokalt till värddatorn (Nej), till en VRDP-klients dator (Ja) eller båda (Alla).</translation>
     </message>
 </context>
 <context>
@@ -14979,11 +14979,11 @@
     <message>
         <source>%1, Active</source>
         <comment>col.1 text, col.1 state</comment>
-        <translation>%1, Aktiv</translation>
+        <translation>%1, Aktivt</translation>
     </message>
     <message>
         <source>All USB filters of this machine. The checkbox to the left defines whether the particular filter is enabled or not. Use the context menu or buttons to the right to add or remove USB filters.</source>
-        <translation>Alla USB-filter för denna maskin. Kryssrutan till vänster anger om det aktuella filtret är aktiverat eller inte. Använd snabbmenyn eller knapparna till höger för att lägga till eller ta bort USB-filter.</translation>
+        <translation>Alla USB-filter för den här maskinen. Kryssrutan till vänster anger om det aktuella filtret är aktiverat eller inte. Använd snabbmenyn eller knapparna till höger för att lägga till eller ta bort USB-filter.</translation>
     </message>
     <message>
         <source>Add new USB filter with all fields initially set to empty strings. Note that such a filter will match any attached USB device.</source>
@@ -16673,7 +16673,7 @@
     </message>
     <message>
         <source>&amp;Everything</source>
-        <translation>A&amp;llting</translation>
+        <translation>&amp;Allt</translation>
     </message>
     <message>
         <source>&amp;Full Clone</source>
@@ -16689,11 +16689,11 @@
     </message>
     <message>
         <source>New machine name and path</source>
-        <translation>Nytt maskinnamn och sökväg</translation>
+        <translation>Namn och sökväg för ny maskin</translation>
     </message>
     <message>
         <source>Clone name cannot be empty</source>
-        <translation>Kloningsnamnet får inte vara tomt</translation>
+        <translation>Klonens namn får inte vara tomt</translation>
     </message>
     <message>
         <source>Path is invalid</source>
@@ -16785,7 +16785,7 @@
     </message>
     <message>
         <source>Clone name is valid</source>
-        <translation>Kloningsnamnet är giltigt</translation>
+        <translation>Klonens namn är giltigt</translation>
     </message>
     <message>
         <source>Path is valid</source>
@@ -16793,7 +16793,7 @@
     </message>
     <message>
         <source>Clone name is not unique</source>
-        <translation>Kloningsnamnet är inte unikt</translation>
+        <translation>Klonens namn är inte unikt</translation>
     </message>
     <message>
         <source>Current &amp;Machine State</source>
@@ -16821,7 +16821,7 @@
     </message>
     <message>
         <source>New Machine Name and Path</source>
-        <translation>Nytt maskinnamn och sökväg</translation>
+        <translation>Namn och sökväg för ny maskin</translation>
     </message>
     <message>
         <source>Clone Type</source>
