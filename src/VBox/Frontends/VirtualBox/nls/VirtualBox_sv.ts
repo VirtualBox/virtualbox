@@ -246,26 +246,26 @@
     <name>UIAcquirePublicKeyDialog</name>
     <message>
         <source>Choose a public key file</source>
-        <translation>Välj en publik nyckelfil</translation>
+        <translation>Välj fil med offentlig nyckel</translation>
     </message>
     <message>
         <source>Public key</source>
-        <translation>Publik nyckel</translation>
+        <translation>Offentlig nyckel</translation>
     </message>
     <message>
         <source>We haven&apos;t found public key id_rsa[.pub] in suitable locations. If you have one, please put it under one of those folders OR copy content to the edit box below:&lt;br&gt;&lt;br&gt;%1&lt;br&gt;&lt;br&gt;If you don&apos;t have one, please consider using one of the following tools to generate it:&lt;br&gt;&lt;br&gt;%2</source>
         <translation variants="yes">
-            <lengthvariant>Vi har inte hittat den publika nyckeln id_rsa[.pub] på någon lämplig plats. Om du har en sådan lägger du den i någon av dessa mappar ELLER kopierar innehållet till redigeringsrutan nedan:&lt;br&gt;&lt;br&gt;%1&lt;br&gt;&lt;br&gt;Om du inte har någon, kan du skapa en med något av följande verktyg:&lt;br&gt;&lt;br&gt;%2</lengthvariant>
-            <lengthvariant>Hittade inte den publika nyckeln id_rsa[.pub]. Lägg den i någon av dessa mappar eller kopiera innehållet till redigeringsrutan nedan:&lt;br&gt;&lt;br&gt;%1&lt;br&gt;&lt;br&gt;Skapa annars en med något av följande verktyg:&lt;br&gt;&lt;br&gt;%2</lengthvariant>
+            <lengthvariant>Vi har inte hittat den offentliga nyckeln id_rsa[.pub] på någon lämplig plats. Om du har en sådan lägger du den i någon av dessa mappar ELLER kopierar innehållet till redigeringsrutan nedan:&lt;br&gt;&lt;br&gt;%1&lt;br&gt;&lt;br&gt;Om du inte har någon kan du skapa en med något av följande verktyg:&lt;br&gt;&lt;br&gt;%2</lengthvariant>
+            <lengthvariant>Hittade inte den offentliga nyckeln id_rsa[.pub]. Lägg den i någon av dessa mappar eller kopiera innehållet till redigeringsrutan nedan:&lt;br&gt;&lt;br&gt;%1&lt;br&gt;&lt;br&gt;Skapa annars en med något av följande verktyg:&lt;br&gt;&lt;br&gt;%2</lengthvariant>
         </translation>
     </message>
     <message>
         <source>We haven&apos;t found public key id_rsa[.pub] in suitable location. If you have one, please put it under specified folder OR copy content to the edit box below:&lt;br&gt;&lt;br&gt;%1&lt;br&gt;&lt;br&gt;If you don&apos;t have one, please consider using the following tool to generate it:&lt;br&gt;&lt;br&gt;%2</source>
-        <translation>Vi har inte hittat den publika nyckeln id_rsa[.pub] på någon lämplig plats. Om du har en sådan lägger du den i den angivna mappen ELLER kopierar innehållet till redigeringsrutan nedan:&lt;br&gt;&lt;br&gt;%1&lt;br&gt;&lt;br&gt;Om du inte har någon, kan du skapa en med följande verktyg:&lt;br&gt;&lt;br&gt;%2</translation>
+        <translation>Vi har inte hittat den offentliga nyckeln id_rsa[.pub] på någon lämplig plats. Om du har en sådan lägger du den i den angivna mappen ELLER kopierar innehållet till redigeringsrutan nedan:&lt;br&gt;&lt;br&gt;%1&lt;br&gt;&lt;br&gt;Om du inte har någon kan du skapa en med följande verktyg:&lt;br&gt;&lt;br&gt;%2</translation>
     </message>
     <message>
         <source>Paste public key</source>
-        <translation>Klistra in publik nyckel</translation>
+        <translation>Klistra in offentlig nyckel</translation>
     </message>
     <message>
         <source>Browse</source>
