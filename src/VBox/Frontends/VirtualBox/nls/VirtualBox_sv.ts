@@ -300,7 +300,7 @@
     </message>
     <message>
         <source>&amp;Pause</source>
-        <translation>Gör &amp;paus</translation>
+        <translation>&amp;Pausa</translation>
     </message>
     <message>
         <source>Suspend the execution of the virtual machine</source>
@@ -524,7 +524,7 @@
     </message>
     <message>
         <source>Popup Menu</source>
-        <translation>Popup-meny</translation>
+        <translation>Snabbmeny</translation>
     </message>
     <message>
         <source>&amp;Webcams</source>
@@ -1058,11 +1058,11 @@
     </message>
     <message>
         <source>&amp;Medium</source>
-        <translation>M&amp;edia</translation>
+        <translation>M&amp;edier</translation>
     </message>
     <message>
         <source>Media Manager</source>
-        <translation>Mediahanterare</translation>
+        <translation>Hanteraren för virtuella medier</translation>
     </message>
     <message>
         <source>&amp;Copy...</source>
@@ -1942,7 +1942,7 @@
     </message>
     <message>
         <source>Terminate</source>
-        <translation>Stäng ner</translation>
+        <translation>Avsluta</translation>
     </message>
     <message>
         <source>&amp;Terminate Cloud Instance...</source>
@@ -9420,7 +9420,7 @@
     <message>
         <source>Terminate</source>
         <comment>cloud instance</comment>
-        <translation>Stäng ner</translation>
+        <translation>Avsluta</translation>
     </message>
     <message>
         <source>&lt;p&gt;You are about to remove following cloud virtual machines from the machine list:&lt;/p&gt;&lt;p&gt;%1&lt;/p&gt;&lt;p&gt;Would you like to delete the instances and boot volumes of these machines as well?&lt;/p&gt;</source>
@@ -9590,19 +9590,19 @@
     </message>
     <message>
         <source>Can&apos;t create medium ...</source>
-        <translation>Kan inte skapa media ...</translation>
+        <translation>Kan inte skapa medium ...</translation>
     </message>
     <message>
         <source>Failed to create medium storage at &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt;.</source>
-        <translation>Misslyckades med att skapa medialagring i &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt;.</translation>
+        <translation>Det gick inte att skapa medielagring i &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt;.</translation>
     </message>
     <message>
         <source>Can&apos;t overwrite medium ...</source>
-        <translation>Kan inte skriva över media ...</translation>
+        <translation>Kan inte skriva över medium ...</translation>
     </message>
     <message>
         <source>Failed to overwrite medium storage at &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt;.</source>
-        <translation>Misslyckades med att skriva över medialagring i &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt;.</translation>
+        <translation>Det gick inte att skriva över medielagring i &lt;nobr&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/nobr&gt;.</translation>
     </message>
     <message>
         <source>Can&apos;t open license file ...</source>
@@ -9865,7 +9865,7 @@
     </message>
     <message>
         <source>Failed to acquire medium parameter.</source>
-        <translation>Misslyckades med att få mediaparameter.</translation>
+        <translation>Det gick inte att hämta medieparametern.</translation>
     </message>
     <message>
         <source>Session failure ...</source>
@@ -10009,7 +10009,7 @@
     </message>
     <message>
         <source>Can&apos;t open medium ...</source>
-        <translation>Kan inte öppna media ...</translation>
+        <translation>Kan inte öppna medium ...</translation>
     </message>
     <message>
         <source>Can&apos;t pause machine ...</source>
@@ -10061,7 +10061,7 @@
     </message>
     <message>
         <source>Can&apos;t create medium storage ...</source>
-        <translation>Kan inte skapa medialagring ...</translation>
+        <translation>Kan inte skapa medielagring ...</translation>
     </message>
     <message>
         <source>Failed to acquire Extension Pack Manager.</source>
@@ -10209,7 +10209,7 @@
     </message>
     <message>
         <source>Can&apos;t close medium ...</source>
-        <translation>Kan inte stänga media ...</translation>
+        <translation>Kan inte stänga medium ...</translation>
     </message>
     <message>
         <source>Can&apos;t discard saved state ...</source>
@@ -10477,7 +10477,7 @@
     </message>
     <message>
         <source>Clear inaccessible media?</source>
-        <translation>Rensa oåtkomliga media?</translation>
+        <translation>Rensa oåtkomliga medier?</translation>
     </message>
     <message>
         <source>Clear</source>
@@ -10637,7 +10637,7 @@
     </message>
     <message>
         <source>Failed to acquire medium attachment parameter.</source>
-        <translation>Misslyckades med att få parameter för mediaanslutningar.</translation>
+        <translation>Det gick inte att hämta parametern för medieanslutningar.</translation>
     </message>
     <message>
         <source>Debugger failure ...</source>
@@ -10774,7 +10774,7 @@
     </message>
     <message>
         <source>&lt;p&gt;You have &lt;b&gt;clicked the mouse&lt;/b&gt; inside the Virtual Machine display or pressed the &lt;b&gt;host key combo&lt;/b&gt;. This will cause the Virtual Machine to &lt;b&gt;capture&lt;/b&gt; the host mouse pointer (only if the mouse pointer integration is not currently supported by the guest OS) and the keyboard, which will make them unavailable to other applications running on your host machine.&lt;/p&gt;&lt;p&gt;You can press the &lt;b&gt;host key combo&lt;/b&gt; at any time to &lt;b&gt;uncapture&lt;/b&gt; the keyboard and mouse (if it is captured) and return them to normal operation. The currently assigned host key combo is shown on the status bar at the bottom of the Virtual Machine window, next to the&amp;nbsp;&lt;img src=:/hostkey_16px.png/&gt;&amp;nbsp;icon. This icon, together with the mouse icon placed nearby, indicate the current keyboard and mouse capture state.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Du har &lt;b&gt;klickat med musen&lt;/b&gt; inne i skärmen för den virtuella maskinen eller tryckt på &lt;b&gt;värdtangentkombinationen&lt;/b&gt;. Detta gör att den virtuella maskinen &lt;b&gt;fångar&lt;/b&gt; värdens muspekare (endast om muspekarintegrationen inte för tillfället har stöd för gästoperativsystemet) och tangentbordet, vilket gör dem otillgängliga för andra program som kör på din värdmaskin.&lt;/p&gt;&lt;p&gt;Du kan trycka på&lt;b&gt;värdtangentkombinationen&lt;/b&gt; när som helst för att &lt;b&gt;avfånga&lt;/b&gt; tangentbordet och musen (om den är fångad) och återgå till normal körning. Den värdtangentkombinationen som för tillfället är tilldelad visas på statusraden i nedre hörnet av virtuella maskinfönstret, bredvid &amp;nbsp;&lt;img src=:/hostkey_16px.png/&gt;&amp;nbsp;icon. denna ikon, tillsammans med musikonen placerad bredvid, indikerar tillståndet för tangentbord- och musfångst.&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Du har &lt;b&gt;klickat med musen&lt;/b&gt; i den virtuella maskinens skärm eller tryckt på &lt;b&gt;värdtangentkombinationen&lt;/b&gt;. Den virtuella maskinen &lt;b&gt;fångar&lt;/b&gt; då värdens muspekare, om gästoperativsystemet inte har stöd för muspekarintegration, och tangentbordet. De blir då otillgängliga för andra program på värddatorn.&lt;/p&gt;&lt;p&gt;Tryck när som helst på &lt;b&gt;värdtangentkombinationen&lt;/b&gt; för att &lt;b&gt;släppa&lt;/b&gt; tangentbordet och musen, om de är fångade, så att de fungerar normalt igen. Den aktuella värdtangentkombinationen visas på statusraden längst ned i maskinfönstret bredvid &amp;nbsp;&lt;img src=:/hostkey_16px.png/&gt;&amp;nbsp;. Den här ikonen och musikonen bredvid visar om tangentbordet och musen är fångade.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&lt;p&gt;The host key combo is currently defined as &lt;b&gt;%1&lt;/b&gt;.&lt;/p&gt;</source>
@@ -10839,7 +10839,7 @@
     <message>
         <source>Shut Down</source>
         <comment>machine</comment>
-        <translation>Stäng ner</translation>
+        <translation>Stäng av</translation>
     </message>
     <message>
         <source>&lt;p&gt;Close these VMs with no shutdown procedure?&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;&lt;p&gt;Unsaved data in applications running on the VM will be lost.&lt;/p&gt;</source>
@@ -10863,7 +10863,7 @@
     </message>
     <message>
         <source>Can&apos;t send shutdown signal ...</source>
-        <translation>Kan inte skicka nerstängningssignal ...</translation>
+        <translation>Kan inte skicka avstängningssignal ...</translation>
     </message>
     <message>
         <source>You are trying to shut down the guest with the ACPI power button. This is currently not possible because the guest does not support software shut down.</source>
@@ -12019,7 +12019,7 @@
     </message>
     <message>
         <source>Deleting medium storage ...</source>
-        <translation>Tar bort medialagring ...</translation>
+        <translation>Tar bort medielagring ...</translation>
     </message>
     <message>
         <source>&lt;b&gt;Location:&lt;/b&gt; %1</source>
@@ -12123,7 +12123,7 @@
     </message>
     <message>
         <source>Removing machine media ...</source>
-        <translation>Tar bort maskinmedia ...</translation>
+        <translation>Tar bort maskinmedier ...</translation>
     </message>
     <message>
         <source>&lt;b&gt;Machine Name:&lt;/b&gt; %1</source>
@@ -15193,7 +15193,7 @@
     </message>
     <message>
         <source>All New Releases and &amp;Pre-Releases</source>
-        <translation>Alla nya utgåvor och &amp;förutgåvor</translation>
+        <translation>Alla nya utgåvor och &amp;förhandsutgåvor</translation>
     </message>
     <message>
         <source>When chosen, you will be notified about all new VirtualBox releases and pre-release versions of VirtualBox.</source>
@@ -15201,7 +15201,7 @@
     </message>
     <message>
         <source>All New Releases, &amp;Pre-Releases and Testing Builds</source>
-        <translation>Alla nya utgåvor, &amp;förutgåvor och testbyggnationer</translation>
+        <translation>Alla nya utgåvor, &amp;förhandsutgåvor och testbyggen</translation>
     </message>
     <message>
         <source>When chosen, you will be notified about all new VirtualBox releases, pre-release versions and testing builds of VirtualBox.</source>
@@ -15537,11 +15537,11 @@
     </message>
     <message>
         <source>&lt;p&gt;Turns off the virtual machine.&lt;/p&gt;&lt;p&gt;Note that this action will stop machine execution immediately so that the guest operating system running inside it will not be able to perform a clean shutdown procedure which may result in &lt;i&gt;data loss&lt;/i&gt; inside the virtual machine. Selecting this action is recommended only if the virtual machine does not respond to the &lt;b&gt;Send the shutdown signal&lt;/b&gt; action.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Stänger av den virtuella maskinen.&lt;/p&gt;&lt;p&gt;Observera att denna åtgärd kommer att stoppa maskinkörningen omedelbart så att det gästoperativsystem som kör inne i den inte kommer att kunna genomföra en ren avstängningsprocedur, vilket kan leda till att &lt;i&gt;data förloras&lt;/i&gt; inne i den virtuella maskinen. Val av denna åtgärd rekommenderas endast om den virtuella maskinen inte svarar på åtgärden &lt;b&gt;Skicka nerstängningssignal&lt;/b&gt;.&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Stänger av den virtuella maskinen.&lt;/p&gt;&lt;p&gt;Observera att åtgärden omedelbart stoppar maskinkörningen, så att gästoperativsystemet inte kan stängas av korrekt. Det kan leda till &lt;i&gt;dataförlust&lt;/i&gt; i den virtuella maskinen. Välj endast åtgärden om den virtuella maskinen inte svarar på &lt;b&gt;Skicka avstängningssignal&lt;/b&gt;.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&amp;Power off the machine</source>
-        <translation>Stänga &amp;av maskinen</translation>
+        <translation>Stäng &amp;av maskinen</translation>
     </message>
     <message>
         <source>&lt;p&gt;When checked, the machine will be returned to the state stored in the current snapshot after it is turned off. This is useful if you are sure that you want to discard the results of your last sessions and start again at that snapshot.&lt;/p&gt;</source>
@@ -16598,11 +16598,11 @@
     </message>
     <message>
         <source>Source to add from</source>
-        <translation>Källa att lägga till från</translation>
+        <translation>Källa att lägga till den virtuella molnmaskinen från</translation>
     </message>
     <message>
         <source>Please choose the source to add cloud virtual machine from.  This can be one of known cloud service providers below.</source>
-        <translation>Välj källan att lägga till virtuell molnmaskin från.  Detta kan vara en av de kända molntjänstleverantörerna nedan.</translation>
+        <translation>Välj källa för den virtuella molnmaskinen. Välj en av molntjänstleverantörerna nedan.</translation>
     </message>
     <message>
         <source>&amp;Instances:</source>
@@ -16610,7 +16610,7 @@
     </message>
     <message>
         <source>Please choose one of cloud service profiles you have registered to add virtual machine from.  Existing instance list will be updated.  To continue, select at least one instance to add virtual machine on the basis of it.</source>
-        <translation>Välj en av molntjänstprofilerna som du har registrerat för att lägga till virtuell maskin från.  Befintlig instanslista kommer att uppdateras.  För att fortsätta, välj minst en instans att lägga till virtuell maskin baserat på det.</translation>
+        <translation>Välj en registrerad molntjänstprofil. Instanslistan uppdateras. Välj sedan minst en instans som ska läggas till.</translation>
     </message>
     <message>
         <source>&amp;Provider:</source>
@@ -16638,7 +16638,7 @@
     </message>
     <message>
         <source>Lists all the cloud VM instances.</source>
-        <translation>Listar alla virtuell maskininstanser i molnet.</translation>
+        <translation>Listar alla instanser av virtuella maskiner i molnet.</translation>
     </message>
 </context>
 <context>
@@ -16733,11 +16733,11 @@
     </message>
     <message>
         <source>Include only NAT network adapter MAC addresses</source>
-        <translation>Inkludera hårdvaruadresser för endast-NAT nätverkskort</translation>
+        <translation>Inkludera endast hårdvaruadresser för NAT-nätverkskort</translation>
     </message>
     <message>
         <source>Include only NAT network adapter MAC addresses during cloning.</source>
-        <translation>Inkludera hårdvaruadresser för endast-NAT-nätverkskort under kloning.</translation>
+        <translation>Inkludera endast hårdvaruadresser för NAT-nätverkskort under kloningen.</translation>
     </message>
     <message>
         <source>Generate new MAC addresses for all network adapters</source>
@@ -17321,7 +17321,7 @@
     </message>
     <message>
         <source>Please choose whether the new virtual hard disk file should grow as it is used (dynamically allocated) or if it should be created at its maximum size (fixed size).</source>
-        <translation>Välj huruvida den nya virtuella hårddiskfilen ska växa när den används (dynamiskt allokerad) eller om den ska skapas med sin maximal storlek (fast storlek).</translation>
+        <translation>Välj om den nya virtuella hårddiskfilen ska växa när den används (dynamiskt allokerad) eller skapas med sin maximala storlek (fast storlek).</translation>
     </message>
     <message>
         <source>&lt;p&gt;A &lt;b&gt;dynamically allocated&lt;/b&gt; hard disk file will only use space on your physical hard disk as it fills up (up to a maximum &lt;b&gt;fixed size&lt;/b&gt;), although it will not shrink again automatically when space on it is freed.&lt;/p&gt;</source>
@@ -17736,7 +17736,7 @@
     </message>
     <message>
         <source>Virtual machine name and operating system</source>
-        <translation>Virtuellt maskinnamn och operativsystem</translation>
+        <translation>Namn på virtuell maskin och operativsystem</translation>
     </message>
     <message>
         <source>The ISO image is used to install the operating system on the VM.</source>
@@ -17788,7 +17788,7 @@
     </message>
     <message>
         <source>Virtual machine name and &amp;operating system</source>
-        <translation>Virtuellt maskinnamn och &amp;operativsystem</translation>
+        <translation>Namn på virtuell maskin och &amp;operativsystem</translation>
     </message>
     <message>
         <source>Set up &amp;unattended guest OS installation</source>
