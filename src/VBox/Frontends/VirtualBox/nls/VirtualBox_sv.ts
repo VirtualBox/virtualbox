@@ -15656,7 +15656,7 @@
     </message>
     <message>
         <source>Network Rate</source>
-        <translation>Nätverksfrekvens</translation>
+        <translation>Nätverkshastighet</translation>
     </message>
     <message>
         <source>Receive Rate</source>
@@ -15692,7 +15692,7 @@
     </message>
     <message>
         <source>VM Exits</source>
-        <translation>VM-avslut</translation>
+        <translation>VM-exits</translation>
     </message>
     <message>
         <source>Current</source>
@@ -15744,7 +15744,7 @@
     </message>
     <message>
         <source>Remote Desktop Server Port</source>
-        <translation>Port för fjärrskrivbordsserver</translation>
+        <translation>Fjärrskrivbordsserverport</translation>
     </message>
     <message>
         <source>&amp;Guest Control</source>
@@ -15821,7 +15821,7 @@
     </message>
     <message>
         <source>Close this dialog (%1)</source>
-        <translation>Stäng denna dialog (%1)</translation>
+        <translation>Stäng den här dialogrutan (%1)</translation>
     </message>
     <message>
         <source>Show Help (%1)</source>
@@ -15829,7 +15829,7 @@
     </message>
     <message>
         <source>This metric requires guest additions to work.</source>
-        <translation>Detta mättal kräver gästtillägg för att fungera.</translation>
+        <translation>Det här mätvärdet kräver gästtillägg för att fungera.</translation>
     </message>
     <message>
         <source>Paused</source>
@@ -15913,7 +15913,7 @@
     </message>
     <message>
         <source>Disk IO</source>
-        <translation>Disk in/ut</translation>
+        <translation>Disk-I/O</translation>
     </message>
     <message>
         <source>Write (Current)</source>
