@@ -1688,7 +1688,7 @@
     </message>
     <message>
         <source>&amp;Soft Keyboard...</source>
-        <translation>&amp;Visuellt tangentbord...</translation>
+        <translation>&amp;Skärmtangentbord...</translation>
     </message>
     <message>
         <source>Display soft keyboard</source>
@@ -13638,7 +13638,7 @@
     </message>
     <message>
         <source>Return Back to Layout List</source>
-        <translation>Återgå till layoutlista</translation>
+        <translation>Återgå till layoutlistan</translation>
     </message>
     <message>
         <source>Back to Layout List</source>
@@ -13654,15 +13654,15 @@
     </message>
     <message>
         <source>Name of the Layout in English</source>
-        <translation>Swedish</translation>
+        <translation>Layoutens namn på engelska</translation>
     </message>
     <message>
         <source>Native Language Name</source>
-        <translation>Svenska</translation>
+        <translation>Språkets namn på modersmålet</translation>
     </message>
     <message>
         <source>Name of the Layout in the native Language</source>
-        <translation>Svenska</translation>
+        <translation>Layoutens namn på modersmålet</translation>
     </message>
     <message>
         <source>Scan Code</source>
@@ -13722,7 +13722,7 @@
     </message>
     <message>
         <source>Save the selected layout into File</source>
-        <translation>Spara markerad layout till fil</translation>
+        <translation>Spara den markerade layouten till en fil</translation>
     </message>
     <message>
         <source>Layout List</source>
@@ -13738,7 +13738,7 @@
     </message>
     <message>
         <source>Web browser go the home page</source>
-        <translation>Webbläsare: Gå till hemsida</translation>
+        <translation>Webbläsare: Gå till startsidan</translation>
     </message>
     <message>
         <source>Web browser go forward</source>
@@ -13750,7 +13750,7 @@
     </message>
     <message>
         <source>Web browser stop loading the page</source>
-        <translation>Webbläsare: Stoppa inläsning av sidan</translation>
+        <translation>Webbläsare: Avbryt sidinläsningen</translation>
     </message>
     <message>
         <source>Web browser search</source>
@@ -13758,11 +13758,11 @@
     </message>
     <message>
         <source>Jump back to previous media track</source>
-        <translation>Hoppa bakåt till föregående mediaspår</translation>
+        <translation>Gå till föregående mediespår</translation>
     </message>
     <message>
         <source>Jump to next media track</source>
-        <translation>Hoppa till nästa mediaspår</translation>
+        <translation>Gå till nästa mediespår</translation>
     </message>
     <message>
         <source>Stop playing</source>
@@ -13782,27 +13782,27 @@
     </message>
     <message>
         <source>Show &apos;My Computer&apos;</source>
-        <translation>Visa &quot;Min dator&quot;</translation>
+        <translation>Visa &quot;Den här datorn&quot;</translation>
     </message>
     <message>
         <source>Show Media folder</source>
-        <translation>Visa mediamapp</translation>
+        <translation>Visa mappen Media</translation>
     </message>
     <message>
         <source>Mute</source>
-        <translation>Tyst</translation>
+        <translation>Stäng av ljudet</translation>
     </message>
     <message>
         <source>Volume up</source>
-        <translation>Volym upp</translation>
+        <translation>Höj volymen</translation>
     </message>
     <message>
         <source>Volume down</source>
-        <translation>Volym ner</translation>
+        <translation>Sänk volymen</translation>
     </message>
     <message>
         <source>Error! Could not create folder under</source>
-        <translation>Fel! Kunde inte skapa mapp under</translation>
+        <translation>Fel! Det gick inte att skapa en mapp i</translation>
     </message>
     <message>
         <source>Provide a file name</source>
@@ -13814,7 +13814,7 @@
     </message>
     <message>
         <source> is saved</source>
-        <translation> är sparad</translation>
+        <translation> har sparats</translation>
     </message>
     <message>
         <source>Copy</source>
@@ -13838,7 +13838,7 @@
     </message>
     <message>
         <source>This color theme is not editable.</source>
-        <translation>Detta färgtema är inte redigeringsbart.</translation>
+        <translation>Det här färgtemat kan inte redigeras.</translation>
     </message>
     <message>
         <source>Keyboard Settings</source>
@@ -13850,7 +13850,7 @@
     </message>
     <message>
         <source>Hide OS/Menu Keys</source>
-        <translation>Dölj OS/menytangenter</translation>
+        <translation>Dölj OS- och menytangenter</translation>
     </message>
     <message>
         <source>Hide Multimedia Keys</source>
@@ -13870,7 +13870,7 @@
     </message>
     <message>
         <source>Button Hover Color</source>
-        <translation>Knappens hovringsfärg</translation>
+        <translation>Knappens färg vid hovring</translation>
     </message>
     <message>
         <source>Button Edit Color</source>
@@ -13878,11 +13878,11 @@
     </message>
     <message>
         <source>Pressed Button Font Color</source>
-        <translation>Typsnittsfärg för tryckt knapp</translation>
+        <translation>Typsnittsfärg för nedtryckt knapp</translation>
     </message>
     <message>
         <source>Soft Keyboard</source>
-        <translation>Visuellt tangentbord</translation>
+        <translation>Skärmtangentbord</translation>
     </message>
     <message>
         <source>&lt;p&gt;Following layouts are edited/copied but not saved:&lt;/p&gt;%1&lt;p&gt;Closing this dialog will cause loosing the changes. Proceed?&lt;/p&gt;</source>
@@ -13894,7 +13894,7 @@
     </message>
     <message>
         <source>The file will be saved under:&lt;br&gt;</source>
-        <translation>Filen kommer att sparas under:&lt;br&gt;</translation>
+        <translation>Filen sparas i:&lt;br&gt;</translation>
     </message>
     <message>
         <source>Power off</source>
@@ -13910,7 +13910,7 @@
     </message>
     <message>
         <source>Deleting the file %1 has failed</source>
-        <translation>Borttagning av filen %1 har misslyckats</translation>
+        <translation>Det gick inte att ta bort filen %1</translation>
     </message>
     <message>
         <source>Close</source>
