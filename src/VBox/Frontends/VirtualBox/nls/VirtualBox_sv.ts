@@ -14501,7 +14501,7 @@
     <name>UIToolBox</name>
     <message>
         <source>Expands the page &quot;%1&quot;</source>
-        <translation>Expanderar sidan &quot;%1&quot;</translation>
+        <translation>Fäller ut sidan &quot;%1&quot;</translation>
     </message>
 </context>
 <context>
