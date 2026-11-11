@@ -6277,7 +6277,7 @@
     </message>
     <message>
         <source>&lt;not selected&gt;</source>
-        <translation>&lt;inte vald&gt;</translation>
+        <translation>&lt;inget valt&gt;</translation>
     </message>
     <message>
         <source>Please use the &lt;b&gt;Other...&lt;/b&gt; item from the drop-down list to select a path.</source>
