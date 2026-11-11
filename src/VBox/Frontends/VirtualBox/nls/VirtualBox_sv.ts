@@ -8056,19 +8056,19 @@
     </message>
     <message>
         <source>Optical Disk Selector</source>
-        <translation>Välj optisk disk</translation>
+        <translation>Väljare för optisk skiva</translation>
     </message>
     <message>
         <source>Floppy Disk Selector</source>
-        <translation>Diskettväljare</translation>
+        <translation>Väljare för diskett</translation>
     </message>
     <message>
         <source>Hard Disk Selector</source>
-        <translation>Välj hårddisk</translation>
+        <translation>Väljare för hårddisk</translation>
     </message>
     <message>
         <source>Virtual Medium Selector</source>
-        <translation>Välj virtuellt medium</translation>
+        <translation>Väljare för virtuellt medium</translation>
     </message>
     <message>
         <source>&amp;Cancel</source>
