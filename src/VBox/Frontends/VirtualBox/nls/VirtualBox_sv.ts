@@ -5627,7 +5627,7 @@
     </message>
     <message>
         <source>Select folder to save Guest Additions image to</source>
-        <translation>Välj en mapp där Gästtilläggens avbildning ska sparas</translation>
+        <translation>Välj en mapp där diskavbildningen för Gästtillägg ska sparas</translation>
     </message>
 </context>
 <context>
