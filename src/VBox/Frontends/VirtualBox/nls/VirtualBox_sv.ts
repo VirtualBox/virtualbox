@@ -8244,7 +8244,7 @@
     </message>
     <message>
         <source>Enable Menu Bar</source>
-        <translation>Aktivera menyrad</translation>
+        <translation>Aktivera menyraden</translation>
     </message>
     <message>
         <source>Virtual Screen Resize</source>
