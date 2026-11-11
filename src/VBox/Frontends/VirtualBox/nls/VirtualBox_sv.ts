@@ -12967,15 +12967,15 @@
     </message>
     <message>
         <source>Index of virtual monitor guest screen scale factor being defined for</source>
-        <translation>Index för virtuella gästskärmens skalningsfaktor som definieras för</translation>
+        <translation>Index för den virtuella gästskärm vars skalningsfaktor anges</translation>
     </message>
     <message>
         <source>Guest screen scale factor the virtual machine has</source>
-        <translation>Gästskärmens skalningsfaktor som den virtuella maskinen har</translation>
+        <translation>Skalningsfaktor för gästskärmen i den virtuella maskinen</translation>
     </message>
     <message>
         <source>Minimum guest screen scale factor</source>
-        <translation>Minimum skalningsfaktor för gästskärm</translation>
+        <translation>Minsta skalningsfaktor för gästskärm</translation>
     </message>
     <message>
         <source>Maximum guest screen scale factor</source>
@@ -12990,7 +12990,7 @@
     </message>
     <message>
         <source>Click to view non-scaled screenshot.</source>
-        <translation>Klicka för att visa icke-skalad skärmbild.</translation>
+        <translation>Klicka för att visa den oskalade skärmbilden.</translation>
     </message>
     <message>
         <source>Click to view scaled screenshot.</source>
@@ -13053,7 +13053,7 @@
     </message>
     <message>
         <source>In Host Pipe mode: Holds the path to the serial port&apos;s pipe on the host. Examples: &quot;\\.\pipe\myvbox&quot; or &quot;/tmp/myvbox&quot;, for Windows and UNIX-like systems respectively. In Host Device mode: Holds the host serial device name. Examples: &quot;COM1&quot; or &quot;/dev/ttyS0&quot;. In Raw File mode: Holds the file-path on the host system, where the serial output will be dumped. In TCP mode: Holds the TCP &quot;port&quot; when in server mode, or &quot;hostname:port&quot; when in client mode.</source>
-        <translation>I Värdrörsläge: Innehåller sökvägen till serieporterns rör på värden. Exempel: &quot;\\.\pipe\minvbox&quot; eller &quot;/tmp/minvbox&quot;, för Windows och UNIX-liknande system respektive. I Värdenhetsläget: Innehåller värdens serieenhetsnamn: Exempel: &quot;COM1&quot; eller &quot;/dev/ttyS0&quot;. I Råfilsläge: Innehåller filsökvägen på värdsystemet där serieutdata kommer att dumpas. I TCP-läget: Innehåller TCP-&quot;porten&quot; när i serverläge eller &quot;värdnamn:port&quot; när i klientläge.</translation>
+        <translation>I läget Värdrör: Anger sökvägen till serieportens rör på värden. Exempel: &quot;\\.\pipe\myvbox&quot; eller &quot;/tmp/myvbox&quot; för Windows respektive Unix-liknande system. I läget Värdenhet: Anger namnet på värdens serieenhet, till exempel &quot;COM1&quot; eller &quot;/dev/ttyS0&quot;. I läget Råfil: Anger filsökvägen på värdsystemet där seriella utdata skrivs. I TCP-läget: Anger TCP-porten i serverläge eller &quot;hostname:port&quot; i klientläge.</translation>
     </message>
     <message>
         <source>Enable this serial port of the virtual machine</source>
@@ -13093,7 +13093,7 @@
     </message>
     <message>
         <source>Virtual machine will assume that the pipe or socket specified in the Path/Address field exists and try to use it. Otherwise, the pipe or socket will be created by the virtual machine when it starts.</source>
-        <translation>Den virtuella maskinen antar att det rör eller uttag som anges i fältet Sökväg/adress finns och försöker använda den. Annars skapas röret eller uttaget av den virtuella maskinen när den startar.</translation>
+        <translation>Den virtuella maskinen antar att röret eller uttaget som anges i fältet Sökväg/adress finns och försöker använda det. Annars skapas röret eller uttaget av den virtuella maskinen när den startar.</translation>
     </message>
     <message>
         <source>&amp;Path/Address</source>
@@ -13154,7 +13154,7 @@
     </message>
     <message>
         <source>Enable sharing of clipboard data as required</source>
-        <translation>Aktivera delning av urklippsdata som krävs</translation>
+        <translation>Aktivera delning av urklippsdata efter behov</translation>
     </message>
 </context>
 <context>
@@ -13555,7 +13555,7 @@
     </message>
     <message>
         <source>Folder where snapshots of this VM are saved</source>
-        <translation>Mapp där ögonblicksbilder av denna VM sparas</translation>
+        <translation>Mapp där ögonblicksbilder av den här virtuella maskinen sparas</translation>
     </message>
 </context>
 <context>
@@ -14305,11 +14305,11 @@
     </message>
     <message>
         <source>Guest system will see the virtual disk as a solid-state device</source>
-        <translation>Gästsystemet kommer att se den virtuella disken som en solid state-enhet</translation>
+        <translation>Gästsystemet ser den virtuella disken som en SSD-enhet</translation>
     </message>
     <message>
         <source>Guest system will see the virtual disk as a hot-pluggable device</source>
-        <translation>Gästsystemet kommer att se den virtuella disken som en hot-pluggable-enhet</translation>
+        <translation>Gästsystemet ser den virtuella disken som en enhet som kan anslutas under drift</translation>
     </message>
     <message>
         <source>Type (Format)</source>
@@ -15521,7 +15521,7 @@
     </message>
     <message>
         <source>&lt;p&gt;Saves the current execution state of the virtual machine to the physical hard disk of the host PC.&lt;/p&gt;&lt;p&gt;Next time this machine is started, it will be restored from the saved state and continue execution from the same place you saved it at, which will let you continue your work immediately.&lt;/p&gt;&lt;p&gt;Note that saving the machine state may take a long time, depending on the guest operating system type and the amount of memory you assigned to the virtual machine.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;Sparar det aktuella körtillståndet för den virtuella maskinen till den fysiska hårddisken för värddatorn.&lt;/p&gt;&lt;p&gt;Nästa gång som denna maskin startas kommer den att återställas från det sparade tillståndet och fortsätta körningen från samma plats som du sparade den vid, vilket låter dig fortsätta dig arbete direkt.&lt;/p&gt;&lt;p&gt;Observera att sparande av maskinens tillstånd kan ta lång tid beroende på gästoperativsystemets typ och mängden minne som du har tilldelat den virtuella maskinen.&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;Sparar den virtuella maskinens aktuella körtillstånd på värddatorns fysiska hårddisk.&lt;/p&gt;&lt;p&gt;Nästa gång maskinen startas återställs det sparade tillståndet och körningen fortsätter där du sparade, så att du kan återuppta arbetet direkt.&lt;/p&gt;&lt;p&gt;Att spara maskintillståndet kan ta lång tid beroende på typ av gästoperativsystem och hur mycket minne som har tilldelats den virtuella maskinen.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&amp;Save the machine state</source>
@@ -15533,7 +15533,7 @@
     </message>
     <message>
         <source>S&amp;end the shutdown signal</source>
-        <translation>S&amp;kicka nerstängningssignal</translation>
+        <translation>S&amp;kicka avstängningssignal</translation>
     </message>
     <message>
         <source>&lt;p&gt;Turns off the virtual machine.&lt;/p&gt;&lt;p&gt;Note that this action will stop machine execution immediately so that the guest operating system running inside it will not be able to perform a clean shutdown procedure which may result in &lt;i&gt;data loss&lt;/i&gt; inside the virtual machine. Selecting this action is recommended only if the virtual machine does not respond to the &lt;b&gt;Send the shutdown signal&lt;/b&gt; action.&lt;/p&gt;</source>
@@ -15545,7 +15545,7 @@
     </message>
     <message>
         <source>&lt;p&gt;When checked, the machine will be returned to the state stored in the current snapshot after it is turned off. This is useful if you are sure that you want to discard the results of your last sessions and start again at that snapshot.&lt;/p&gt;</source>
-        <translation>&lt;p&gt;När kryssad kommer maskinens tillstånd att återställas från det lagrade tillståndet i den aktuella ögonblicksbilden direkt efter att den stängs av. Det här är användbart om du är säker på att du vill förkasta resultatet för din senaste session och gå tillbaka till den aktuella ögonblicksbilden.&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;När alternativet är markerat återställs maskinen till tillståndet i den aktuella ögonblicksbilden när den har stängts av. Det är användbart om du vill förkasta resultatet från de senaste sessionerna och börja om från ögonblicksbilden.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&amp;Restore current snapshot &apos;%1&apos;</source>
@@ -17424,7 +17424,7 @@
     </message>
     <message>
         <source>You have selected to skip unattended guest OS install, the guest OS will need to be installed manually.</source>
-        <translation>Du har valt att hoppa över obevakad installation av gästoperativsystem, det kommer behövas att installeras manuellt.</translation>
+        <translation>Du har valt att hoppa över den obevakade installationen av gästoperativsystemet. Det måste då installeras manuellt.</translation>
     </message>
     <message>
         <source>This OS type can be installed unattendedly. The install will start after this wizard is closed.</source>
@@ -17704,7 +17704,7 @@
     </message>
     <message>
         <source>The ISO file to install the VirtualBox Guest Additions</source>
-        <translation>ISO-filen för att installera VirtualBox gästtillägg</translation>
+        <translation>ISO-filen för att installera VirtualBox Gästtillägg</translation>
     </message>
     <message>
         <source>Guest &amp;Additions ISO Image:</source>
@@ -17716,7 +17716,7 @@
     </message>
     <message>
         <source>Install the VirtualBox Guest Additions on the guest OS</source>
-        <translation>Installera VirtualBox gästtillägg på gästoperativsystemet</translation>
+        <translation>Installera VirtualBox Gästtillägg på gästoperativsystemet</translation>
     </message>
     <message>
         <source>OS Installation Options</source>
@@ -17796,7 +17796,7 @@
     </message>
     <message>
         <source>Specify virtual hard dis&amp;k</source>
-        <translation>Ange virtuell hårrdis&amp;k</translation>
+        <translation>Ange virtuell hårddis&amp;k</translation>
     </message>
     <message>
         <source>Specify virtual h&amp;ardware</source>
