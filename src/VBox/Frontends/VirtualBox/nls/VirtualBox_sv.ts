@@ -1315,7 +1315,7 @@
     </message>
     <message>
         <source>Display virtual machine settings window to configure hard disks</source>
-        <translation>Visa inställningsfönster för virtuell maskin för att konfigurera hårddiskar</translation>
+        <translation>Visa inställningsfönstret för den virtuella maskinen för att konfigurera hårddiskar</translation>
     </message>
     <message>
         <source>&amp;Optical Drives</source>
@@ -1347,7 +1347,7 @@
     </message>
     <message>
         <source>Display virtual machine settings window to configure network adapters</source>
-        <translation>Visa inställningsfönster för virtuell maskin för att konfigurera nätverkskort</translation>
+        <translation>Visa inställningsfönstret för den virtuella maskinen för att konfigurera nätverkskort</translation>
     </message>
     <message>
         <source>&amp;USB</source>
@@ -1359,7 +1359,7 @@
     </message>
     <message>
         <source>Display virtual machine settings window to configure USB devices</source>
-        <translation>Visa inställningsfönster för virtuell maskin för att konfigurera USB-enheter</translation>
+        <translation>Visa inställningsfönstret för den virtuella maskinen för att konfigurera USB-enheter</translation>
     </message>
     <message>
         <source>&amp;Drag and Drop</source>
@@ -1371,7 +1371,7 @@
     </message>
     <message>
         <source>Display virtual machine settings window to configure shared folders</source>
-        <translation>Visa inställningsfönster för virtuell maskin för att konfigurera delade mappar</translation>
+        <translation>Visa inställningsfönstret för den virtuella maskinen för att konfigurera delade mappar</translation>
     </message>
     <message>
         <source>Insert the Guest Additions disk file into the virtual optical drive</source>
@@ -1692,12 +1692,12 @@
     </message>
     <message>
         <source>Display soft keyboard</source>
-        <translation>Visa visuellt tangentbord</translation>
+        <translation>Visa skärmtangentbord</translation>
     </message>
     <message>
         <source>Guest Control Terminal...</source>
         <comment>debug action</comment>
-        <translation>Terminal för gästkontroll...</translation>
+        <translation>Gästkontrollterminal...</translation>
     </message>
     <message>
         <source>[Root]</source>
@@ -1706,7 +1706,7 @@
     </message>
     <message>
         <source>Copy Key Fingerprint (%1)</source>
-        <translation>Kopiera nyckelns fingeravtryck (%1)</translation>
+        <translation>Kopiera nyckelfingeravtryck (%1)</translation>
     </message>
     <message>
         <source>Connect</source>
@@ -1737,11 +1737,11 @@
     </message>
     <message>
         <source>Toggle guest session panel of the file manager</source>
-        <translation>Växla panel för gästsession för filhanteraren</translation>
+        <translation>Visa eller dölj panelen för gästsession i filhanteraren</translation>
     </message>
     <message>
         <source>Toggle Guest Session Panel</source>
-        <translation>Växla gästsessionspanel</translation>
+        <translation>Visa eller dölj gästsessionspanelen</translation>
     </message>
     <message>
         <source>VISO Creator</source>
@@ -1753,11 +1753,11 @@
     </message>
     <message>
         <source>Add selected item(s) to VISO</source>
-        <translation>Lägg till markerade post(er) till VISO</translation>
+        <translation>Lägg till markerade poster i VISO</translation>
     </message>
     <message>
         <source>Remove selected item(s) from VISO</source>
-        <translation>Ta bort markerade post(er) från VISO</translation>
+        <translation>Ta bort markerade poster från VISO</translation>
     </message>
     <message>
         <source>&amp;New Directory</source>
@@ -1765,7 +1765,7 @@
     </message>
     <message>
         <source>Create a new directory under the current location</source>
-        <translation>Skapa en ny katalog under den aktuella platsen</translation>
+        <translation>Skapa en ny katalog på den aktuella platsen</translation>
     </message>
     <message>
         <source>&amp;Rename</source>
