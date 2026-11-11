@@ -2537,7 +2537,7 @@
     <name>UIAdvancedSettingsDialogMachine</name>
     <message>
         <source>Allows to navigate through VM Settings categories</source>
-        <translation>Tillåter navigering genom inställningskategorier för virtuella maskiner</translation>
+        <translation>Gör det möjligt att navigera mellan inställningskategorier för virtuella maskiner</translation>
     </message>
     <message>
         <source>General</source>
