@@ -14400,7 +14400,7 @@
     <name>UITakeSnapshotDialog</name>
     <message>
         <source>Take Snapshot of Virtual Machine</source>
-        <translation>Spara ögonblicksbild av den virtuella maskinen</translation>
+        <translation>Ta en ögonblicksbild av den virtuella maskinen</translation>
     </message>
     <message>
         <source>Snapshot &amp;Name</source>
@@ -14443,11 +14443,11 @@
     </message>
     <message>
         <source>Take Snapshot and close the dialog</source>
-        <translation>Spara ögonblicksbild och stäng dialogen</translation>
+        <translation>Ta en ögonblicksbild och stäng dialogrutan</translation>
     </message>
     <message>
         <source>Close dialog without taking a snapshot</source>
-        <translation>Stäng dialogen utan att spara en ögonblicksbild</translation>
+        <translation>Stäng dialogrutan utan att ta en ögonblicksbild</translation>
     </message>
     <message>
         <source>Show dialog help</source>
