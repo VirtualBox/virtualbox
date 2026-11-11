@@ -14697,8 +14697,8 @@
     <message numerus="yes">
         <source>%n day(s) ago</source>
         <translation>
-            <numerusform>%n dygn sedan</numerusform>
-            <numerusform>%n dygn sedan</numerusform>
+            <numerusform>%n dag sedan</numerusform>
+            <numerusform>%n dagar sedan</numerusform>
         </translation>
     </message>
     <message numerus="yes">
