@@ -6712,11 +6712,11 @@
     <name>UIHomePane</name>
     <message>
         <source>&lt;h3&gt;Get started with VirtualBox&lt;/h3&gt;&lt;p&gt;&lt;a href=#configure#&gt;Configure VirtualBox Manager to work with your computer&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#create#&gt;Create a new virtual machine (VM)&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#open#&gt;Open a saved VirtualBox VM&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#import#&gt;Import a VM from open virtualization or cloud formats&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Refer to the &lt;a href=https://docs.oracle.com/en/virtualization/virtualbox/index.html&gt;VirtualBox documentation&lt;/a&gt; or press %1 for help.&lt;/p&gt;&lt;p&gt;Visit &lt;a href=https://www.virtualbox.org&gt;virtualbox.org&lt;/a&gt; to download test builds, access the source code, and more.&lt;/p&gt;</source>
-        <translation>&lt;h3&gt;Kom igång med VirtualBox&lt;/h3&gt;&lt;p&gt;&lt;a href=#configure#&gt;Konfigurera VirtualBox Manager så att det fungerar med datorn&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#create#&gt;Skapa en ny virtuell maskin (VM)&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#open#&gt;Öppna en sparad VirtualBox-VM&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#import#&gt;Importera en VM från öppna virtualiserings- eller molnformat&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Se &lt;a href=https://docs.oracle.com/en/virtualization/virtualbox/index.html&gt;VirtualBox-dokumentationen&lt;/a&gt; eller tryck på %1 för hjälp.&lt;/p&gt;&lt;p&gt;Besök &lt;a href=https://www.virtualbox.org&gt;virtualbox.org&lt;/a&gt; för att hämta testbyggen, få åtkomst till källkoden med mera.&lt;/p&gt;</translation>
+        <translation>&lt;h3&gt;Kom igång med VirtualBox&lt;/h3&gt;&lt;p&gt;&lt;a href=#configure#&gt;Konfigurera VirtualBox Manager för din dator&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#create#&gt;Skapa en ny virtuell maskin (VM)&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#open#&gt;Öppna en sparad virtuell VirtualBox-maskin&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=#import#&gt;Importera en virtuell maskin från öppna virtualiserings- eller molnformat&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Se &lt;a href=https://docs.oracle.com/en/virtualization/virtualbox/index.html&gt;VirtualBox-dokumentationen&lt;/a&gt; eller tryck på %1 för hjälp.&lt;/p&gt;&lt;p&gt;Besök &lt;a href=https://www.virtualbox.org&gt;virtualbox.org&lt;/a&gt; för att hämta testbyggen, komma åt källkoden med mera.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&lt;h3&gt;Please choose Experience Mode!&lt;/h3&gt;By default, the VirtualBox GUI is hiding some options, tools and wizards. &lt;p&gt;The &lt;b&gt;Basic Mode&lt;/b&gt; is intended for those users who are not interested in advanced functionality and prefer a simpler, cleaner interface.&lt;/p&gt;&lt;p&gt;The &lt;b&gt;Expert Mode&lt;/b&gt; is intended for experienced users who wish to utilize all VirtualBox functionality.&lt;/p&gt;&lt;p&gt;You can choose whether you are a beginner or experienced user by selecting required option at the right. This choice can always be changed in Global Preferences or Machine Settings windows.&lt;/p&gt;</source>
-        <translation>&lt;h3&gt;Välj upplevelseläge!&lt;/h3&gt;Som standard döljer VirtualBox gränssnitt vissa alternativ, verktyg och guider. &lt;p&gt;&lt;b&gt;Grundläggande läge&lt;/b&gt; är tänkt för de användare som inte är intresserade i de mer avancerade funktionerna och föredrar ett enklare och smidigare gränssnitt.&lt;/p&gt;&lt;p&gt; &lt;b&gt;Expertläge&lt;/b&gt; är tänkt för de mer erfarna användarna som önskar att använda all funktionalitet i VirtualBox.&lt;/p&gt;&lt;p&gt;Du kan välja huruvida du är en nybörjare eller mer erfaren användare genom att välja nödvändigt alternativ till höger. Detta val kan sedan ändras i de globala inställningarna eller maskininställningarna.&lt;/p&gt;</translation>
+        <translation>&lt;h3&gt;Välj användarläge&lt;/h3&gt;Som standard döljer VirtualBox gränssnitt vissa alternativ, verktyg och guider. &lt;p&gt;&lt;b&gt;Grundläggande läge&lt;/b&gt; är avsett för användare som inte är intresserade av avancerade funktioner och föredrar ett enklare och renare gränssnitt.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Expertläge&lt;/b&gt; är avsett för erfarna användare som vill använda alla funktioner i VirtualBox.&lt;/p&gt;&lt;p&gt;Välj önskat alternativ till höger beroende på om du är nybörjare eller erfaren användare. Du kan alltid ändra valet i de globala inställningarna eller maskininställningarna.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>Basic Mode</source>
@@ -11880,7 +11880,7 @@
     </message>
     <message>
         <source>Content access denied</source>
-        <translation>Innehållsåtkomst nekades</translation>
+        <translation>Åtkomst till innehållet nekades</translation>
     </message>
     <message>
         <source>Protocol failure</source>
@@ -11896,11 +11896,11 @@
     </message>
     <message>
         <source>Unknown reason</source>
-        <translation>Okänd anledning</translation>
+        <translation>Okänd orsak</translation>
     </message>
     <message>
         <source>Unable to initialize HTTP library</source>
-        <translation>Kunde inte initiera HTTP-bibliotek</translation>
+        <translation>Det gick inte att initiera HTTP-biblioteket</translation>
     </message>
     <message>
         <source>Url not found on the server</source>
@@ -12437,7 +12437,7 @@
     </message>
     <message>
         <source>Add New Rule</source>
-        <translation>Lägg till ny regel</translation>
+        <translation>Lägg till en ny regel</translation>
     </message>
     <message>
         <source>Copy Selected Rule</source>
@@ -12449,7 +12449,7 @@
     </message>
     <message>
         <source>Adds new port forwarding rule.</source>
-        <translation>Lägger till ny portomdirigeringsregel.</translation>
+        <translation>Lägger till en ny portomdirigeringsregel.</translation>
     </message>
     <message>
         <source>Copies selected port forwarding rule.</source>
@@ -12584,7 +12584,7 @@
     </message>
     <message>
         <source>Proxy URL. The format is: &lt;table cellspacing=0 style=&apos;white-space:pre&apos;&gt;&lt;tr&gt;&lt;td&gt;[{type}://][{userid}[:{password}]@]{server}[:{port}]&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;http://username:password@proxy.host.com:port&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</source>
-        <translation>URL för proxy. Formatet är: &lt;table cellspacing=0 style=&apos;white-space:pre&apos;&gt;&lt;tr&gt;&lt;td&gt;[{type}://][{userid}[:{password}]@]{server}[:{port}]&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;http://username:password@proxy.host.com:port&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</translation>
+        <translation>Proxy-URL. Formatet är: &lt;table cellspacing=0 style=&apos;white-space:pre&apos;&gt;&lt;tr&gt;&lt;td&gt;[{type}://][{userid}[:{password}]@]{server}[:{port}]&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;http://username:password@proxy.host.com:port&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</translation>
     </message>
 </context>
 <context>
