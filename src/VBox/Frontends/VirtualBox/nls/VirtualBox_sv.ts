@@ -4428,7 +4428,7 @@
     </message>
     <message>
         <source>Adapter %1</source>
-        <translation>Adapter %1</translation>
+        <translation>Nätverkskort %1</translation>
     </message>
     <message>
         <source>PCnet-ISA (Am79C960)</source>
@@ -4868,7 +4868,7 @@
     <message>
         <source>Information Inaccessible</source>
         <comment>details</comment>
-        <translation>Information inte tillgänglig</translation>
+        <translation>Informationen är inte tillgänglig</translation>
     </message>
     <message>
         <source>Base Memory</source>
@@ -4973,7 +4973,7 @@
     <message>
         <source>Remote Desktop Server Port</source>
         <comment>details (display/vrde)</comment>
-        <translation>Port för fjärrskrivbordsserver</translation>
+        <translation>Fjärrskrivbordsserverport</translation>
     </message>
     <message>
         <source>Remote Desktop Server</source>
@@ -5077,7 +5077,7 @@
     <message>
         <source>Adapter %1</source>
         <comment>details (network)</comment>
-        <translation>Adapter %1</translation>
+        <translation>Nätverkskort %1</translation>
     </message>
     <message>
         <source>Disabled</source>
@@ -5107,7 +5107,7 @@
     <message>
         <source>%1 (%2 active)</source>
         <comment>details (usb)</comment>
-        <translation>%1 (%2 aktiv)</translation>
+        <translation>%1 (%2 aktiva)</translation>
     </message>
     <message>
         <source>Disabled</source>
@@ -5162,7 +5162,7 @@
     <message>
         <source>Mini-toolbar Position</source>
         <comment>details (user interface)</comment>
-        <translation>Position för miniverktygsrad</translation>
+        <translation>Miniverktygsradens placering</translation>
     </message>
     <message>
         <source>Top</source>
@@ -5251,7 +5251,7 @@
     <message>
         <source>Visual State</source>
         <comment>details (user interface)</comment>
-        <translation>Visuellt tillstånd</translation>
+        <translation>Visningsläge</translation>
     </message>
     <message>
         <source>TPM Type</source>
@@ -5301,7 +5301,7 @@
     <message>
         <source>Input/Output</source>
         <comment>details (audio)</comment>
-        <translation>Ingång/Utgång</translation>
+        <translation>In- och utmatning</translation>
     </message>
     <message>
         <source>Not Attached</source>
