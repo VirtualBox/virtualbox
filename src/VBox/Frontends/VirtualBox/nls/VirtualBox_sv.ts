@@ -3087,8 +3087,8 @@
         <source>%n machine(s)</source>
         <comment>Group item tool-tip / Machine info</comment>
         <translation>
-            <numerusform>%n maskin</numerusform>
-            <numerusform>%n maskiner</numerusform>
+            <numerusform>%n virtuell maskin</numerusform>
+            <numerusform>%n virtuella maskiner</numerusform>
         </translation>
     </message>
     <message numerus="yes">
