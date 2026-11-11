@@ -6888,11 +6888,11 @@
     <name>UIImportLicenseViewer</name>
     <message>
         <source>&lt;b&gt;The virtual system &quot;%1&quot; requires that you agree to the terms and conditions of the software license agreement shown below.&lt;/b&gt;&lt;br /&gt;&lt;br /&gt;Click &lt;b&gt;Agree&lt;/b&gt; to continue or click &lt;b&gt;Disagree&lt;/b&gt; to cancel the import.</source>
-        <translation>&lt;b&gt;Det virtuella systemet &quot;%1&quot; kräver att du godkänner villkoren för programvarans licens som visas nedan.&lt;/b&gt;&lt;br /&gt;&lt;br /&gt;Klicka på &lt;b&gt;Godkänn&lt;/b&gt; för att fortsätta eller klicka på &lt;b&gt;Godkänn inte&lt;/b&gt; för att avbryta importen.</translation>
+        <translation>&lt;b&gt;Det virtuella systemet &quot;%1&quot; kräver att du godkänner villkoren i programvarulicensavtalet nedan.&lt;/b&gt;&lt;br /&gt;&lt;br /&gt;Klicka på &lt;b&gt;Godkänn&lt;/b&gt; för att fortsätta eller klicka på &lt;b&gt;Godkänn inte&lt;/b&gt; för att avbryta importen.</translation>
     </message>
     <message>
         <source>Software License Agreement</source>
-        <translation>Licensavtal för programvara</translation>
+        <translation>Programvarulicensavtal</translation>
     </message>
     <message>
         <source>&amp;Disagree</source>
@@ -6916,7 +6916,7 @@
     </message>
     <message>
         <source>Save license to file...</source>
-        <translation>Spara licens till fil...</translation>
+        <translation>Spara licensen i en fil...</translation>
     </message>
 </context>
 <context>
