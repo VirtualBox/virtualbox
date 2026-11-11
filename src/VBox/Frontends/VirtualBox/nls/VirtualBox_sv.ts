@@ -7210,7 +7210,7 @@
     </message>
     <message>
         <source>%1 USB devices attached</source>
-        <translation>%1 USB-enheter anslutna</translation>
+        <translation>Antal anslutna USB-enheter: %1</translation>
     </message>
     <message>
         <source>No USB devices attached</source>
