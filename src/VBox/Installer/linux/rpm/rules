@@ -124,7 +124,7 @@ ifneq ($(MAKECMDGOALS),clean)
   $(error Cannot detect package distribution (rpmrel=$(rpmrel)))
  endif
 
- ifeq ($(filter-out el5 el6 el7 el8 el9 el10 fedora18 fedora19 fedora20 fedora21 fedora22 fedora24 fedora25 fedora26 fedora29 fedora31 fedora32 fedora33 fedora35 fedora36 fedora40,$(rpmrel)),)
+ ifeq ($(filter-out el5 el6 el7 el8 el9 el10 fedora18 fedora19 fedora20 fedora21 fedora22 fedora24 fedora25 fedora26 fedora29 fedora31 fedora32 fedora33 fedora35 fedora36 fedora40 fedora44 fedora45,$(rpmrel)),)
   rpmspec := rpm_redhat
  endif
  ifeq ($(filter-out openSUSE110 openSUSE111 openSUSE112 openSUSE113 openSUSE114 openSUSE123 openSUSE131 openSUSE132 openSUSE150 openSUSE153 openSUSE156 openSUSE160 openSUSETW,$(rpmrel)),)
