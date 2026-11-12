@@ -100,6 +100,7 @@ distros="
     ubuntu25.10-amd64
     ubuntu26.04-amd64
     fedora40.0-amd64
+    fedora45.0-amd64
     debian11.0-amd64
     debian12.0-amd64
     debian13.0-amd64
