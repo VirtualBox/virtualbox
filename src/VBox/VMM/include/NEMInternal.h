@@ -483,6 +483,9 @@ typedef struct NEMCPU
     uint64_t                    uKvmApicBase;
     /** The number of variable MTRRs KVM supports, returned from MSR_IA32_MTRR_CAP. */
     uint8_t                     cVarMtrrs;
+# elif defined(VBOX_VMM_TARGET_RISCV)
+    /** Status of the IRQ line when last seen. */
+    bool                        fIrqLastSeen;
 # endif
 
     /** @name Statistics

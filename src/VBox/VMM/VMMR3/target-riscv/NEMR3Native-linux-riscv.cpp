@@ -601,19 +601,14 @@ DECLHIDDEN(bool) nemR3NativeNotifyDebugEventChangedPerCpu(PVM pVM, PVMCPU pVCpu,
 }
 
 
-DECL_FORCE_INLINE(int) nemR3LnxKvmUpdateIntrState(PVM pVM, PVMCPU pVCpu, bool fIrq, bool fAsserted)
+DECL_FORCE_INLINE(int) nemR3LnxKvmUpdateIntrState(PVMCPU pVCpu, bool fAsserted)
 {
-    LogFlowFunc(("pVM=%p pVCpu=%p fIrq=%RTbool fAsserted=%RTbool\n", pVM, pVCpu, fIrq, fAsserted));
+    LogFlowFunc(("pVCpu=%p fAsserted=%RTbool\n", pVCpu, fAsserted));
 
-#if 0
-    struct kvm_irq_level IrqLvl;
-    IrqLvl.irq   =   ((uint32_t)KVM_ARM_IRQ_TYPE_CPU << 24)        /* Directly drives CPU interrupt lines. */
-                   | (pVCpu->idCpu & 0xff) << 16
-                   | (fIrq ? 0 : 1);
-    IrqLvl.level = fAsserted ? 1 : 0;
-    int rcLnx = ioctl(pVM->nem.s.fdVm, KVM_IRQ_LINE, &IrqLvl);
+    struct kvm_interrupt Irq;
+    Irq.irq = fAsserted ? KVM_INTERRUPT_SET : KVM_INTERRUPT_UNSET;
+    int rcLnx = ioctl(pVCpu->nem.s.fdVCpu, KVM_INTERRUPT, &Irq);
     AssertReturn(rcLnx == 0, VERR_NEM_IPE_9);
-#endif
 
     return VINF_SUCCESS;
 }
@@ -622,30 +617,19 @@ DECL_FORCE_INLINE(int) nemR3LnxKvmUpdateIntrState(PVM pVM, PVMCPU pVCpu, bool fI
 /**
  * Deals with pending interrupt FFs prior to executing guest code.
  */
-static VBOXSTRICTRC nemHCLnxHandleInterruptFF(PVM pVM, PVMCPU pVCpu)
+static VBOXSTRICTRC nemHCLnxHandleInterruptFF(PVMCPU pVCpu)
 {
-#if 0
     bool const fIrq = VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_IRQ);
-    bool const fFiq = VMCPU_FF_IS_SET(pVCpu, VMCPU_FF_INTERRUPT_FIQ);
 
-    LogFlowFunc(("pVCpu=%p{.idCpu=%u} fIrq=%RTbool fFiq=%RTbool\n", pVCpu, pVCpu->idCpu, fIrq, fFiq));
+    LogFlowFunc(("pVCpu=%p{.idCpu=%u} fIrq=%RTbool\n", pVCpu, pVCpu->idCpu, fIrq));
 
     /* Update the pending interrupt state. */
     if (fIrq != pVCpu->nem.s.fIrqLastSeen)
     {
-        int rc = nemR3LnxKvmUpdateIntrState(pVM, pVCpu, true /*fIrq*/, fIrq);
+        int rc = nemR3LnxKvmUpdateIntrState(pVCpu, fIrq);
         AssertRCReturn(rc, VERR_NEM_IPE_9);
         pVCpu->nem.s.fIrqLastSeen = fIrq;
     }
-
-    if (fFiq != pVCpu->nem.s.fFiqLastSeen)
-    {
-        int rc = nemR3LnxKvmUpdateIntrState(pVM, pVCpu, false /*fIrq*/, fFiq);
-        AssertRCReturn(rc, VERR_NEM_IPE_9);
-        pVCpu->nem.s.fFiqLastSeen = fFiq;
-    }
-#endif
-    RT_NOREF(pVM, pVCpu);
 
     return VINF_SUCCESS;
 }
@@ -930,7 +914,7 @@ VMMR3_INT_DECL(VBOXSTRICTRC) NEMR3RunGC(PVM pVM, PVMCPU pVCpu)
         /*
          * Sync the interrupt state.
          */
-        rcStrict = nemHCLnxHandleInterruptFF(pVM, pVCpu);
+        rcStrict = nemHCLnxHandleInterruptFF(pVCpu);
         if (rcStrict == VINF_SUCCESS)
         { /* likely */ }
         else
