@@ -78,10 +78,8 @@ typedef struct PLIC
 {
     /** The ring-3 device instance. */
     PPDMDEVINSR3                pDevInsR3;
-    /** Interrupt enabled bitmap (or of the bitmap for all vCPUs). */
-    volatile uint64_t           bmIrqEnabled[1024 / 8 / sizeof(uint64_t)];
     /** Interrupt pending bitmap. */
-    volatile uint64_t           bmIrqPending[1024 / 8 / sizeof(uint64_t)];
+    volatile uint32_t           bmIrqPending[1024 / (8 * sizeof(uint32_t))];
     /** Interrupt source priority. */
     uint32_t                    au32IrqPriority[1024];
 } PLIC;
@@ -99,7 +97,7 @@ AssertCompile(sizeof(PLIC) <= 4360);
 typedef struct PLICCPU
 {
     /** Interrupt enabled bitmap for this vCPU. */
-    volatile uint64_t           bmIrqEnabled[1024 / 8 / sizeof(uint64_t)];
+    volatile uint32_t           bmIrqEnabled[1024 / 8 / sizeof(uint32_t)];
     /** The priority threshold for this vCPU. */
     volatile uint32_t           u32PriThr;
 } PLICCPU;
