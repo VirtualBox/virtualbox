@@ -805,6 +805,13 @@ QString UIIconPoolGeneral::determineOSArchString(const QString &strOSTypeId)
         else
             return QString("A32");
     }
+    else if (enmPlatformArchitecture == KPlatformArchitecture_RISCV)
+    {
+        if (fIs64Bit)
+            return QString("RV64");
+        else
+            return QString("RV32");
+    }
     else if (enmPlatformArchitecture == KPlatformArchitecture_x86)
     {
         if (fIs64Bit)

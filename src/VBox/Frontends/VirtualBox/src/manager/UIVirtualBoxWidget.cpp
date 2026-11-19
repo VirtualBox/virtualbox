@@ -377,6 +377,8 @@ void UIVirtualBoxWidget::prepareWidgets()
                 const KPlatformArchitecture enmArch = KPlatformArchitecture_x86;
 #elif defined(RT_ARCH_X86) || defined(RT_ARCH_AMD64)
                 const KPlatformArchitecture enmArch = KPlatformArchitecture_ARM;
+#elif defined(RT_ARCH_RISCV32) || defined(RT_ARCH_RISCV64)
+                const KPlatformArchitecture enmArch = KPlatformArchitecture_RISCV;
 #else
                 const KPlatformArchitecture enmArch = KPlatformArchitecture_None;
 #endif

@@ -321,6 +321,13 @@ void UIMachineSettingsSystem::loadToCacheFrom(QVariant &data)
             break;
         }
 #endif
+#ifdef VBOX_WITH_VIRT_RISCV
+        case KPlatformArchitecture_RISCV:
+        {
+            /** @todo BUGBUG RISC-V stuff goes here. */
+            break;
+        }
+#endif
         default:
             break;
     }
@@ -1175,6 +1182,14 @@ bool UIMachineSettingsSystem::saveProcessorData()
                 }
 #endif
 
+#ifdef VBOX_WITH_VIRT_RISCV
+                case KPlatformArchitecture_RISCV:
+                {
+                    /** @todo BUGBUG RISC-V stuff goes here. */
+                    break;
+                }
+#endif
+
                 default:
                     break;
             }
@@ -1243,6 +1258,14 @@ bool UIMachineSettingsSystem::saveAccelerationData()
                 case KPlatformArchitecture_ARM:
                 {
                     /** @todo BUGBUG ARM stuff goes here. */
+                    break;
+                }
+#endif
+
+#ifdef VBOX_WITH_VIRT_RISCV
+                case KPlatformArchitecture_RISCV:
+                {
+                    /** @todo BUGBUG RISC-V stuff goes here. */
                     break;
                 }
 #endif

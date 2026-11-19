@@ -1844,6 +1844,14 @@ QString UISnapshotDetailsWidget::accelerationReport(const CMachine &comMachine)
         }
 #endif
 
+#ifdef VBOX_WITH_VIRT_RISCV
+        case KPlatformArchitecture_RISCV:
+        {
+            /** @todo BUGBUG RISC-V stuff goes here. */
+            break;
+        }
+#endif
+
         default:
             break;
     }

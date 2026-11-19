@@ -425,6 +425,14 @@ UITextTable UIDetailsGenerator::generateMachineInformationSystem(CMachine &comMa
             }
 #endif
 
+#ifdef VBOX_WITH_VIRT_RISCV
+            case KPlatformArchitecture_RISCV:
+            {
+                /** @todo BUGBUG ARM stuff goes here. */
+                break;
+            }
+#endif
+
             default:
                 break;
         }
