@@ -1060,7 +1060,7 @@ static NTSTATUS vboxUsbRtUrbSendCompletion(PDEVICE_OBJECT pDevObj, IRP *pIrp, vo
     PUSBSUP_URB pUrbInfo = (PUSBSUP_URB)pContext->pOut;
     PVBOXUSBDEV_EXT pDevExt = pContext->pDevExt;
 
-    if (!pUrb || !pMdlBuf || !pUrbInfo || !pDevExt)
+    if (!pUrb || !pUrbInfo || !pDevExt)
     {
         AssertMsgFailed((__FUNCTION__": Invalid args\n"));
         if (pDevExt)
@@ -1069,6 +1069,16 @@ static NTSTATUS vboxUsbRtUrbSendCompletion(PDEVICE_OBJECT pDevObj, IRP *pIrp, vo
         return STATUS_CONTINUE_COMPLETION;
     }
 
+    bool const fZlpBulkOut = pContext->ulTransferType == USBSUP_TRANSFER_TYPE_BULK
+                          && pUrbInfo->dir == USBSUP_DIRECTION_OUT
+                          && pUrb->UrbBulkOrInterruptTransfer.TransferBufferLength == 0;
+    if (!pMdlBuf && !fZlpBulkOut)
+    {
+        AssertMsgFailed((__FUNCTION__": Invalid args\n"));
+        vboxUsbDdiStateRelease(pDevExt);
+        pIrp->IoStatus.Information = 0;
+        return STATUS_CONTINUE_COMPLETION;
+    }
     NTSTATUS Status = pIrp->IoStatus.Status;
     if (Status == STATUS_SUCCESS)
     {
@@ -1211,8 +1221,11 @@ static NTSTATUS vboxUsbRtUrbSendCompletion(PDEVICE_OBJECT pDevObj, IRP *pIrp, vo
         }
     }
 
-    MmUnlockPages(pMdlBuf);
-    IoFreeMdl(pMdlBuf);
+    if (pMdlBuf)
+    {
+        MmUnlockPages(pMdlBuf);
+        IoFreeMdl(pMdlBuf);
+    }
 
     vboxUsbMemFree(pContext);
 
@@ -1263,36 +1276,43 @@ static NTSTATUS vboxUsbRtUrbSend(PVBOXUSBDEV_EXT pDevExt, PIRP pIrp, PUSBSUP_URB
             }
         }
 
-        pMdlBuf = IoAllocateMdl(pUrbInfo->buf, (ULONG)pUrbInfo->len, FALSE, FALSE, NULL);
-        if (!pMdlBuf)
+        bool const fZlpBulkOut = pUrbInfo->type == USBSUP_TRANSFER_TYPE_BULK
+                              && pUrbInfo->dir == USBSUP_DIRECTION_OUT
+                              && pUrbInfo->len == 0;
+        PVOID pBuffer = NULL;
+        if (!fZlpBulkOut)
         {
-            AssertMsgFailed((__FUNCTION__": IoAllocateMdl failed for buffer (0x%p) length (%d)\n", pUrbInfo->buf, pUrbInfo->len));
-            Status = STATUS_INSUFFICIENT_RESOURCES;
-            break;
-        }
+            pMdlBuf = IoAllocateMdl(pUrbInfo->buf, (ULONG)pUrbInfo->len, FALSE, FALSE, NULL);
+            if (!pMdlBuf)
+            {
+                AssertMsgFailed((__FUNCTION__": IoAllocateMdl failed for buffer (0x%p) length (%d)\n", pUrbInfo->buf, pUrbInfo->len));
+                Status = STATUS_INSUFFICIENT_RESOURCES;
+                break;
+            }
 
-        __try
-        {
-            MmProbeAndLockPages(pMdlBuf, UserMode, IoModifyAccess);
-        }
-        __except(EXCEPTION_EXECUTE_HANDLER)
-        {
-            Status = GetExceptionCode();
-            IoFreeMdl(pMdlBuf);
-            pMdlBuf = NULL;
-            AssertMsgFailed((__FUNCTION__": Exception Code (0x%x)\n", Status));
-            break;
-        }
+            __try
+            {
+                MmProbeAndLockPages(pMdlBuf, UserMode, IoModifyAccess);
+            }
+            __except(EXCEPTION_EXECUTE_HANDLER)
+            {
+                Status = GetExceptionCode();
+                IoFreeMdl(pMdlBuf);
+                pMdlBuf = NULL;
+                AssertMsgFailed((__FUNCTION__": Exception Code (0x%x)\n", Status));
+                break;
+            }
 
-        /* For some reason, passing a MDL in the URB does not work reliably. Notably
-         * the iPhone when used with iTunes fails.
-         */
-        PVOID pBuffer = MmGetSystemAddressForMdlSafe(pMdlBuf, NormalPagePriority);
-        if (!pBuffer)
-        {
-            AssertMsgFailed((__FUNCTION__": MmGetSystemAddressForMdlSafe failed\n"));
-            Status = STATUS_INSUFFICIENT_RESOURCES;
-            break;
+            /* For some reason, passing a MDL in the URB does not work reliably. Notably
+             * the iPhone when used with iTunes fails.
+             */
+            pBuffer = MmGetSystemAddressForMdlSafe(pMdlBuf, NormalPagePriority);
+            if (!pBuffer)
+            {
+                AssertMsgFailed((__FUNCTION__": MmGetSystemAddressForMdlSafe failed\n"));
+                Status = STATUS_INSUFFICIENT_RESOURCES;
+                break;
+            }
         }
 
         switch (pUrbInfo->type)
