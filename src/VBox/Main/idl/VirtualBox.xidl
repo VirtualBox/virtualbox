@@ -298,9 +298,13 @@
 <cpp line="#endif"/>
 <cpp line="#define GUEST_OS_ID_STR_A32(a_szOSid)     a_szOSid  &quot;_arm32&quot;"/>
 <cpp line="#define GUEST_OS_ID_STR_A64(a_szOSid)     a_szOSid  &quot;_arm64&quot;"/>
+<cpp line="#define GUEST_OS_ID_STR_RV32(a_szOSid)    a_szOSid  &quot;_riscv32&quot;"/>
+<cpp line="#define GUEST_OS_ID_STR_RV64(a_szOSid)    a_szOSid  &quot;_riscv64&quot;"/>
 <cpp line="#define GUEST_OS_ID_STR_AMD64(a_szOSid)   GUEST_OS_ID_STR_X64(a_szOSid)"/>
 <cpp line="#define GUEST_OS_ID_STR_ARM32(a_szOSid)   GUEST_OS_ID_STR_A32(a_szOSid)"/>
 <cpp line="#define GUEST_OS_ID_STR_ARM64(a_szOSid)   GUEST_OS_ID_STR_A64(a_szOSid)"/>
+<cpp line="#define GUEST_OS_ID_STR_RISCV32(a_szOSid) GUEST_OS_ID_STR_RV32(a_szOSid)"/>
+<cpp line="#define GUEST_OS_ID_STR_RISCV64(a_szOSid) GUEST_OS_ID_STR_RV64(a_szOSid)"/>
 <cpp line="#define GUEST_OS_ID_STR_PARTIAL(a_szOSidPart) a_szOSidPart"/>
 
 <!--
