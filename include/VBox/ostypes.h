@@ -108,6 +108,8 @@ typedef enum VBOXOSTYPE
     VBOXOSTYPE_Unknown_x64      = 0x00100,
     VBOXOSTYPE_Unknown_arm32    = 0x00200,
     VBOXOSTYPE_Unknown_arm64    = 0x00300,
+    VBOXOSTYPE_Unknown_riscv32  = 0x00400,
+    VBOXOSTYPE_Unknown_riscv64  = 0x00500,
 
     /** @name DOS and it's descendants
      * @{ */
@@ -161,6 +163,8 @@ typedef enum VBOXOSTYPE
     VBOXOSTYPE_Linux            = 0x50000,
     VBOXOSTYPE_Linux_x64        = 0x50100,
     VBOXOSTYPE_Linux_arm64      = 0x50300,
+    VBOXOSTYPE_Linux_riscv32    = 0x50400,
+    VBOXOSTYPE_Linux_riscv64    = 0x50500,
     VBOXOSTYPE_Linux22          = 0x51000,
     VBOXOSTYPE_Linux24          = 0x52000,
     VBOXOSTYPE_Linux24_x64      = 0x52100,
@@ -169,10 +173,12 @@ typedef enum VBOXOSTYPE
     VBOXOSTYPE_ArchLinux        = 0x54000,
     VBOXOSTYPE_ArchLinux_x64    = 0x54100,
     VBOXOSTYPE_ArchLinux_arm64  = 0x54300,
+    VBOXOSTYPE_ArchLinux_riscv64 = 0x54500,
     VBOXOSTYPE_Debian           = 0x55000,
     VBOXOSTYPE_Debian_x64       = 0x55100,
     VBOXOSTYPE_Debian_arm32     = 0x55200,
     VBOXOSTYPE_Debian_arm64     = 0x55300,
+    VBOXOSTYPE_Debian_riscv64   = 0x55500,
     VBOXOSTYPE_Debian31         = 0x55001,  // 32-bit only
     VBOXOSTYPE_Debian4          = 0x55002,
     VBOXOSTYPE_Debian4_x64      = 0x55102,
@@ -198,8 +204,10 @@ typedef enum VBOXOSTYPE
     VBOXOSTYPE_Debian12_arm64   = 0x5530a,
     VBOXOSTYPE_Debian13_x64     = 0x5510b,
     VBOXOSTYPE_Debian13_arm64   = 0x5530b,
+    VBOXOSTYPE_Debian13_riscv64 = 0x5550b,
     VBOXOSTYPE_Debian_latest_x64 = VBOXOSTYPE_Debian13_x64,
     VBOXOSTYPE_Debian_latest_arm64 = VBOXOSTYPE_Debian13_arm64,
+    VBOXOSTYPE_Debian_latest_riscv64 = VBOXOSTYPE_Debian13_riscv64,
     VBOXOSTYPE_OpenSUSE         = 0x56000,
     VBOXOSTYPE_OpenSUSE_x64     = 0x56100,
     VBOXOSTYPE_OpenSUSE_Leap_x64         = 0x56101,  // 64-bit only
@@ -212,6 +220,7 @@ typedef enum VBOXOSTYPE
     VBOXOSTYPE_FedoraCore       = 0x57000,
     VBOXOSTYPE_FedoraCore_x64   = 0x57100,
     VBOXOSTYPE_FedoraCore_arm64 = 0x57300,
+    VBOXOSTYPE_FedoraCore_riscv64 = 0x57500,
     VBOXOSTYPE_Gentoo           = 0x58000,
     VBOXOSTYPE_Gentoo_x64       = 0x58100,
     VBOXOSTYPE_Mandriva         = 0x59000,
@@ -249,6 +258,7 @@ typedef enum VBOXOSTYPE
     VBOXOSTYPE_Ubuntu_x64       = 0x5C100,
     VBOXOSTYPE_Ubuntu_arm32     = 0x5C200,
     VBOXOSTYPE_Ubuntu_arm64     = 0x5C300,
+    VBOXOSTYPE_Ubuntu_riscv64   = 0x5C500,
     VBOXOSTYPE_Xubuntu          = 0x5C001,
     VBOXOSTYPE_Xubuntu_x64      = 0x5C101,
     VBOXOSTYPE_Lubuntu          = 0x5C002,
@@ -299,8 +309,10 @@ typedef enum VBOXOSTYPE
     VBOXOSTYPE_Ubuntu24_arm64   = 0x5C320,  // 64-bit only
     VBOXOSTYPE_Ubuntu25_x64     = 0x5C121,  // 64-bit only
     VBOXOSTYPE_Ubuntu25_arm64   = 0x5C321,  // 64-bit only
+    VBOXOSTYPE_Ubuntu25_riscv64 = 0x5C521,  // 64-bit only
     VBOXOSTYPE_Ubuntu_latest_x64 = VBOXOSTYPE_Ubuntu25_x64,
     VBOXOSTYPE_Ubuntu_latest_arm64 = VBOXOSTYPE_Ubuntu25_arm64,
+    VBOXOSTYPE_Ubuntu_latest_riscv64 = VBOXOSTYPE_Ubuntu25_riscv64,
     VBOXOSTYPE_Xandros          = 0x5D000,
     VBOXOSTYPE_Xandros_x64      = 0x5D100,
     VBOXOSTYPE_Oracle           = 0x5E000,
@@ -394,6 +406,10 @@ typedef enum VBOXOSTYPE
     VBOXOSTYPE_arm32            = 0x00200,
     /** Architecture value for 64-bit ARM. */
     VBOXOSTYPE_arm64            = 0x00300,
+    /** Architecture value for 32-bit RISC-V. */
+    VBOXOSTYPE_riscv32          = 0x00400,
+    /** Architecture value for 64-bit RISC-V. */
+    VBOXOSTYPE_riscv64          = 0x00500,
     /** Architecture value for unknown or unsupported architectures. */
     VBOXOSTYPE_UnknownArch      = 0x00700,
     /** @} */
