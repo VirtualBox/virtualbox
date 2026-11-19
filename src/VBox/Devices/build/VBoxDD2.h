@@ -70,6 +70,12 @@ extern DECL_VBOXDD2(const unsigned)       g_cbEfiFirmwareArm32;
 extern DECL_VBOXDD2(const unsigned char)  g_abEfiFirmwareArm64[];
 extern DECL_VBOXDD2(const unsigned)       g_cbEfiFirmwareArm64;
 # endif
+# ifdef VBOX_WITH_VIRT_RISCV
+extern DECL_VBOXDD2(const unsigned char)  g_abEfiFirmwareRiscV32[];
+extern DECL_VBOXDD2(const unsigned)       g_cbEfiFirmwareRiscV32;
+extern DECL_VBOXDD2(const unsigned char)  g_abEfiFirmwareRiscV64[];
+extern DECL_VBOXDD2(const unsigned)       g_cbEfiFirmwareRiscV64;
+# endif
 #endif
 
 RT_C_DECLS_END
