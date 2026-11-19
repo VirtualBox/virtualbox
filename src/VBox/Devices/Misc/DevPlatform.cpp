@@ -133,6 +133,12 @@ typedef DEVPLATFORM *PDEVPLATFORM;
 static const char g_szEfiBuiltinArm32[] = "VBoxEFI-arm32.fd";
 /** Special file name value for indicating the 64-bit built-in EFI firmware. */
 static const char g_szEfiBuiltinArm64[] = "VBoxEFI-arm64.fd";
+#  ifdef VBOX_WITH_VIRT_RISCV
+/** Special file name value for indicating the 32-bit built-in EFI firmware. */
+static const char g_szEfiBuiltinRiscV32[] = "VBoxEFI-riscv32.fd";
+/** Special file name value for indicating the 64-bit built-in EFI firmware. */
+static const char g_szEfiBuiltinRiscV64[] = "VBoxEFI-riscv64.fd";
+#  endif
 # endif
 
 
@@ -169,6 +175,22 @@ static int platformR3ResourceResolveContent(PPDMDEVINS pDevIns, PDEVPLATFORM pTh
             *ppv     = g_abEfiFirmwareArm64;
             *pcb     = g_cbEfiFirmwareArm64;
         }
+# ifdef VBOX_WITH_VIRT_RISCV
+#  if 0
+        else if (RTStrCmp(pRes->pszResourceIdOrFilename, g_szEfiBuiltinRiscV32) == 0)
+        {
+            *ppvFree = NULL;
+            *ppv     = g_abEfiFirmwareRiscV32;
+            *pcb     = g_cbEfiFirmwareRiscV32;
+        }
+#  endif
+        else if (   RTStrCmp(pRes->pszResourceIdOrFilename, g_szEfiBuiltinRiscV64) == 0)
+        {
+            *ppvFree = NULL;
+            *ppv     = g_abEfiFirmwareRiscV64;
+            *pcb     = g_cbEfiFirmwareRiscV64;
+        }
+# endif
         else
 #endif
         {
