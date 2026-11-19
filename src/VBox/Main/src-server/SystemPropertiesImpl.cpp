@@ -1058,7 +1058,7 @@ HRESULT SystemProperties::getSupportedPlatformArchitectures(std::vector<Platform
         , PlatformArchitecture_ARM
 # endif
 # ifdef VBOX_WITH_VIRT_RISCV
-        , PlatformArchitecture_RiscV
+        , PlatformArchitecture_RISCV
 # endif
 #else
 # error "Port me!"
@@ -1067,6 +1067,7 @@ HRESULT SystemProperties::getSupportedPlatformArchitectures(std::vector<Platform
     };
     RT_CPP_VECTOR_ASSIGN_ARRAY(aSupportedPlatformArchitectures, s_aPlatformArchitectures);
 
+#if 0
     HRESULT hrc;
 #if !defined(RT_ARCH_AMD64) && !defined(VBOX_WITH_X86_ENABLED)
     Bstr bstrEnableX86OnArm;
@@ -1083,10 +1084,11 @@ HRESULT SystemProperties::getSupportedPlatformArchitectures(std::vector<Platform
     hrc = mParent->GetExtraData(Bstr("VBoxInternal2/EnableArm").raw(), bstrEnableArmOnX86.asOutParam());
     if (FAILED(hrc) || !bstrEnableArmOnX86.equals("1"))
     {
-        Assert(aSupportedPlatformArchitectures[1] == PlatformArchitecture_ARM);
+        //Assert(aSupportedPlatformArchitectures[1] == PlatformArchitecture_ARM); /** @todo */
         if (aSupportedPlatformArchitectures[1] == PlatformArchitecture_ARM)
             aSupportedPlatformArchitectures.erase(std::next(aSupportedPlatformArchitectures.begin()));
     }
+#endif
 #endif
     return S_OK;
 }

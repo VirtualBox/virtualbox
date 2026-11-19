@@ -3153,6 +3153,23 @@ HRESULT Machine::launchVMProcess(const ComPtr<ISession> &aSession,
 #endif
                 break;
 
+            case PlatformArchitecture_RISCV:
+#if !defined(RT_ARCH_RISCV64)
+# if !defined(VBOX_WITH_RISCV_ENABLED)
+                {
+                    Bstr bstrEnableRiscV;
+                    hrc = mParent->GetExtraData(Bstr("VBoxInternal2/EnableRiscV").raw(), bstrEnableRiscV.asOutParam());
+                    if (SUCCEEDED(hrc) && bstrEnableRiscV.equals("1"))
+                        break;
+                }
+                return setError(VBOX_E_PLATFORM_ARCH_NOT_SUPPORTED,
+                                tr("Cannot run the machine because its platform architecture %s is not supported on %s"),
+                                Global::stringifyPlatformArchitecture(platformArch),
+                                Global::stringifyPlatformArchitecture(PlatformArchitecture_RISCV));
+# endif
+#endif
+                break;
+
             default:
                 return setError(VBOX_E_PLATFORM_ARCH_NOT_SUPPORTED,
                                 tr("Cannot run the machine because its platform architecture %s is not supported"),

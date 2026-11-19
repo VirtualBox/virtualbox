@@ -77,7 +77,7 @@ class DisplayMouseInterface;
 class VMPowerUpTask;
 class VMPowerDownTask;
 class NvramStore;
-#ifdef VBOX_WITH_VIRT_ARMV8
+#if defined(VBOX_WITH_VIRT_ARMV8) || defined(VBOX_WITH_VIRT_RISCV)
 class ResourceStore;
 #endif
 
@@ -762,6 +762,9 @@ private:
     int i_configConstructorX86(PUVM pUVM, PVM pVM, PCVMMR3VTABLE pVMM, AutoWriteLock *pAlock);
 #ifdef VBOX_WITH_VIRT_ARMV8
     int i_configConstructorArmV8(PUVM pUVM, PVM pVM, PCVMMR3VTABLE pVMM, AutoWriteLock *pAlock);
+#endif
+#ifdef VBOX_WITH_VIRT_RISCV
+    int i_configConstructorRiscV(PUVM pUVM, PVM pVM, PCVMMR3VTABLE pVMM, AutoWriteLock *pAlock);
 #endif
     int i_configCfgmOverlay(PCFGMNODE pRoot, IVirtualBox *pVirtualBox, IMachine *pMachine);
     int i_configDumpAPISettingsTweaks(IVirtualBox *pVirtualBox, IMachine *pMachine);

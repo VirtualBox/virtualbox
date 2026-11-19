@@ -5605,6 +5605,8 @@ void MachineConfigFile::readPlatform(const xml::ElementNode &elmPlatformOrHardwa
                 plat.architectureType = PlatformArchitecture_x86;
             else if (strArch.equalsIgnoreCase("ARM"))
                 plat.architectureType = PlatformArchitecture_ARM;
+            else if (strArch.equalsIgnoreCase("RISCV"))
+                plat.architectureType = PlatformArchitecture_RISCV;
             else
                 throw ConfigFileError(this,
                                       &elmPlatformOrHardware,
@@ -7598,6 +7600,10 @@ void MachineConfigFile::buildPlatformXML(xml::ElementNode &elmParent,
 
             case PlatformArchitecture_ARM:
                 pelmPlatformOrHardware->setAttribute("architecture", "ARM");
+                break;
+
+            case PlatformArchitecture_RISCV:
+                pelmPlatformOrHardware->setAttribute("architecture", "RISCV");
                 break;
 
             default:

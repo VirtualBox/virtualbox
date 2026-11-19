@@ -527,6 +527,11 @@ int Console::i_configConstructorInner(PUVM pUVM, PVM pVM, PCVMMR3VTABLE pVMM, Au
         case PlatformArchitecture_ARM:
             return i_configConstructorArmV8(pUVM, pVM, pVMM, pAlock);
 #endif
+
+#ifdef VBOX_WITH_VIRT_RISCV
+        case PlatformArchitecture_RISCV:
+            return i_configConstructorRiscV(pUVM, pVM, pVMM, pAlock);
+#endif
         default:
             break;
     }

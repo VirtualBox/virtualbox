@@ -499,6 +499,12 @@ HRESULT Platform::i_loadSettings(const settings::Platform &data)
             case PlatformArchitecture_ARM:
                 return mARM->i_loadSettings(data.arm);
 #endif
+
+#ifdef VBOX_WITH_VIRT_RISCV
+            case PlatformArchitecture_RISCV:
+                return S_OK;
+#endif
+
             case PlatformArchitecture_None:
                 RT_FALL_THROUGH();
             default:
@@ -536,6 +542,12 @@ HRESULT Platform::i_saveSettings(settings::Platform &data)
         case PlatformArchitecture_ARM:
             return mARM->i_saveSettings(data.arm);
 #endif
+
+#ifdef VBOX_WITH_VIRT_RISCV
+        case PlatformArchitecture_RISCV:
+            return S_OK;
+#endif
+
         case PlatformArchitecture_None:
             RT_FALL_THROUGH();
         default:
@@ -567,6 +579,12 @@ void Platform::i_rollback()
                     return mARM->i_rollback();
                 break;
 #endif
+
+#ifdef VBOX_WITH_VIRT_RISCV
+            case PlatformArchitecture_RISCV:
+                break;
+#endif
+
             case PlatformArchitecture_None:
                 RT_FALL_THROUGH();
             default:
@@ -610,6 +628,12 @@ void Platform::i_commit()
         case PlatformArchitecture_ARM:
             return mARM->i_commit();
 #endif
+
+#ifdef VBOX_WITH_VIRT_RISCV
+        case PlatformArchitecture_RISCV:
+            return;
+#endif
+
         case PlatformArchitecture_None:
             RT_FALL_THROUGH();
         default:
@@ -648,6 +672,12 @@ void Platform::i_copyFrom(Platform *aThat)
         case PlatformArchitecture_ARM:
             return mARM->i_copyFrom(aThat->mARM);
 #endif
+
+#ifdef VBOX_WITH_VIRT_ARMV8
+        case PlatformArchitecture_RISCV:
+            return;
+#endif
+
         case PlatformArchitecture_None:
             RT_FALL_THROUGH();
         default:
@@ -721,6 +751,15 @@ HRESULT Platform::i_initArchitecture(PlatformArchitecture_T aArchitecture, Platf
             break;
         }
 #endif
+
+#ifdef VBOX_WITH_VIRT_RISCV
+        case PlatformArchitecture_RISCV:
+        {
+            hrc = S_OK;
+            break;
+        }
+#endif
+
         default:
             hrc = VBOX_E_PLATFORM_ARCH_NOT_SUPPORTED;
             break;
@@ -782,6 +821,15 @@ HRESULT Platform::i_applyDefaults(GuestOSType *aOsType)
                 break;
             }
 
+            case PlatformArchitecture_RISCV:
+            {
+                /* Note: These are the value we ever had, so default to these. */
+                enmChipsetType = ChipsetType_ARMv8Virtual;
+                enmIommuType   = IommuType_None;
+                fRTCUseUTC     = TRUE; /** @todo BUGBUG Is this correct for ARM? */
+                break;
+            }
+
             default:
                 AssertFailed();
                 break;
@@ -812,6 +860,12 @@ HRESULT Platform::i_applyDefaults(GuestOSType *aOsType)
             hrc = mARM->i_applyDefaults(aOsType);
             break;
 #endif
+
+#ifdef VBOX_WITH_VIRT_RISCV
+        case PlatformArchitecture_RISCV:
+            break;
+#endif
+
         case PlatformArchitecture_None:
             RT_FALL_THROUGH();
         default:

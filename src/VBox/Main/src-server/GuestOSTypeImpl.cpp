@@ -203,6 +203,9 @@ PlatformArchitecture_T GuestOSType::i_platformArchitecture() const
     else if (   osTypePlatformArchitectureMasked == VBOXOSTYPE_arm32
              || osTypePlatformArchitectureMasked == VBOXOSTYPE_arm64)
         return PlatformArchitecture_ARM;
+    else if (   osTypePlatformArchitectureMasked == VBOXOSTYPE_riscv32
+             || osTypePlatformArchitectureMasked == VBOXOSTYPE_riscv64)
+        return PlatformArchitecture_RISCV;
 
     /* Will happen when called before being properly initialized(). */
     return PlatformArchitecture_None;

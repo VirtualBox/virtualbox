@@ -169,6 +169,7 @@ HRESULT PlatformProperties::getParallelPortCount(ULONG *count)
         }
 
         case PlatformArchitecture_ARM:
+        case PlatformArchitecture_RISCV:
         default:
         {
             *count = 0; /* Not supported. */
@@ -654,6 +655,7 @@ HRESULT PlatformProperties::getSupportedFirmwareTypes(std::vector<FirmwareType_T
         }
 
         case PlatformArchitecture_ARM:
+        case PlatformArchitecture_RISCV:
         {
             static const FirmwareType_T aFirmwareTypes[] =
             {
@@ -696,6 +698,7 @@ HRESULT PlatformProperties::getSupportedGfxControllerTypes(std::vector<GraphicsC
         }
 
         case PlatformArchitecture_ARM:
+        case PlatformArchitecture_RISCV:
         {
             static const GraphicsControllerType_T aGraphicsControllerTypes[] =
             {
@@ -774,6 +777,7 @@ HRESULT PlatformProperties::getSupportedNetworkAdapterTypes(std::vector<NetworkA
         }
 
         case PlatformArchitecture_ARM:
+        case PlatformArchitecture_RISCV:
         {
             static const NetworkAdapterType_T aNetworkAdapterTypes[] =
             {
@@ -1031,6 +1035,7 @@ HRESULT PlatformProperties::getSupportedAudioControllerTypes(std::vector<AudioCo
         }
 
         case PlatformArchitecture_ARM:
+        case PlatformArchitecture_RISCV:
         {
             static const AudioControllerType_T aAudioControllerTypes[] =
             {
@@ -1073,6 +1078,7 @@ HRESULT PlatformProperties::getSupportedBootDevices(std::vector<DeviceType_T> &a
         }
 
         case PlatformArchitecture_ARM:
+        case PlatformArchitecture_RISCV:
         {
             static const DeviceType_T aBootDevices[] =
             {
@@ -1116,6 +1122,7 @@ HRESULT PlatformProperties::getSupportedStorageBuses(std::vector<StorageBus_T> &
         }
 
         case PlatformArchitecture_ARM:
+        case PlatformArchitecture_RISCV:
         {
             static const StorageBus_T aStorageBuses[] =
             {
@@ -1165,6 +1172,7 @@ HRESULT PlatformProperties::getSupportedStorageControllerTypes(std::vector<Stora
         }
 
         case PlatformArchitecture_ARM:
+        case PlatformArchitecture_RISCV:
         {
             static const StorageControllerType_T aStorageControllerTypes[] =
             {
@@ -1205,6 +1213,7 @@ HRESULT PlatformProperties::getSupportedChipsetTypes(std::vector<ChipsetType_T> 
         }
 
         case PlatformArchitecture_ARM:
+        case PlatformArchitecture_RISCV:
         {
             static const ChipsetType_T aChipsetTypes[] =
             {
@@ -1242,6 +1251,7 @@ HRESULT PlatformProperties::getSupportedIommuTypes(std::vector<IommuType_T> &aSu
         }
 
         case PlatformArchitecture_ARM:
+        case PlatformArchitecture_RISCV:
         {
             static const IommuType_T aIommuTypes[] =
             {
@@ -1278,6 +1288,7 @@ HRESULT PlatformProperties::getSupportedTpmTypes(std::vector<TpmType_T> &aSuppor
         }
 
         case PlatformArchitecture_ARM:
+        case PlatformArchitecture_RISCV:
         {
             static const TpmType_T aTpmTypes[] =
             {

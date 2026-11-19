@@ -89,7 +89,7 @@
 #include "PCIDeviceAttachmentImpl.h"
 #include "EmulatedUSBImpl.h"
 #include "NvramStoreImpl.h"
-#ifdef VBOX_WITH_VIRT_ARMV8
+#if defined(VBOX_WITH_VIRT_ARMV8) || defined(VBOX_WITH_VIRT_RISCV)
 # include "ResourceStoreImpl.h"
 #endif
 #ifdef VBOX_WITH_SHARED_CLIPBOARD
@@ -667,6 +667,30 @@ HRESULT Console::initWithMachine(IMachine *aMachine, IInternalMachineControl *aC
             pszVMM = "VBoxVMMArm";
             break;
 #endif
+#ifdef VBOX_WITH_VIRT_RISCV
+        case PlatformArchitecture_RISCV:
+#if !defined(RT_ARCH_RISCV64) && !defined(VBOX_WITH_RISCV_ENABLED)
+            {
+                ComPtr<IVirtualBox> pVirtualBox;
+                hrc = mMachine->COMGETTER(Parent)(pVirtualBox.asOutParam());
+                if (SUCCEEDED(hrc))
+                {
+                    Bstr bstrEnableRiscV;
+                    hrc = pVirtualBox->GetExtraData(Bstr("VBoxInternal2/EnableRiscV").raw(), bstrEnableRiscV.asOutParam());
+                    if (FAILED(hrc) || !bstrEnableRiscV.equals("1"))
+                    {
+                        hrc = setError(VBOX_E_PLATFORM_ARCH_NOT_SUPPORTED,
+                                       tr("Cannot run the machine because its platform architecture %s is not supported on %s"),
+                                       Global::stringifyPlatformArchitecture(platformArch),
+                                       Global::stringifyPlatformArchitecture(PlatformArchitecture_RISCV));
+                        break;
+                    }
+                }
+            }
+#endif
+            pszVMM = "VBoxVMMRiscv";
+            break;
+#endif
         default:
             hrc = setError(VBOX_E_PLATFORM_ARCH_NOT_SUPPORTED,
                            tr("Cannot run the machine because its platform architecture %s is not supported"),
@@ -681,7 +705,7 @@ HRESULT Console::initWithMachine(IMachine *aMachine, IInternalMachineControl *aC
     hrc = i_loadVMM(pszVMM);
     AssertComRCReturnRC(hrc);
 
-#ifdef VBOX_WITH_VIRT_ARMV8
+#if defined(VBOX_WITH_VIRT_ARMV8) || defined(VBOX_WITH_VIRT_RISCV)
     unconst(mptrResourceStore).createObject();
     hrc = mptrResourceStore->init(this);
     AssertComRCReturnRC(hrc);
@@ -1016,7 +1040,7 @@ void Console::uninit()
 
     unconst(mVRDEServer).setNull();
 
-#ifdef VBOX_WITH_VIRT_ARMV8
+#if defined(VBOX_WITH_VIRT_ARMV8) || defined(VBOX_WITH_VIRT_RISCV)
     if (mptrResourceStore)
     {
         mptrResourceStore->uninit();
@@ -4934,7 +4958,7 @@ HRESULT Console::i_initSecretKeyIfOnAllAttachments(void)
         hrc = pStorageCtrl->COMGETTER(Bus)(&enmBus);
         AssertComRC(hrc);
 
-        unsigned uLUN;
+        unsigned uLUN = 0;
         hrc = Console::i_storageBusPortDeviceToLun(enmBus, lPort, lDev, uLUN);
         AssertComRC(hrc);
 
@@ -5053,7 +5077,7 @@ HRESULT Console::i_clearDiskEncryptionKeysOnAllAttachmentsWithKeyId(const Utf8St
             hrc = pStorageCtrl->COMGETTER(Bus)(&enmBus);
             AssertComRC(hrc);
 
-            unsigned uLUN;
+            unsigned uLUN = 0;
             hrc = Console::i_storageBusPortDeviceToLun(enmBus, lPort, lDev, uLUN);
             AssertComRC(hrc);
 
@@ -12014,7 +12038,7 @@ Console::i_vmm2User_QueryGenericObject(PCVMM2USERMETHODS pThis, PUVM pUVM, PCRTU
         return pNvramStore;
     }
 
-#ifdef VBOX_WITH_VIRT_ARMV8
+#if defined(VBOX_WITH_VIRT_ARMV8) || defined(VBOX_WITH_VIRT_RISCV)
     if (UuidCopy == COM_IIDOF(IResourceStore))
     {
         ResourceStore *pResourceStore = static_cast<ResourceStore *>(pConsole->mptrResourceStore);

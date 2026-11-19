@@ -43,6 +43,7 @@ DECLARE_TRANSLATION_CONTEXT(GlobalCtx);
 #define VBOX_OSTYPE_X64(a_OStype)       VBOXOSTYPE_ ## a_OStype ## _x64
 #define VBOX_OSTYPE_ARM32(a_OStype)     VBOXOSTYPE_ ## a_OStype ## _arm32
 #define VBOX_OSTYPE_ARM64(a_OStype)     VBOXOSTYPE_ ## a_OStype ## _arm64
+#define VBOX_OSTYPE_RISCV64(a_OStype)   VBOXOSTYPE_ ## a_OStype ## _riscv64
 
 #define VBOX_GUEST_ADDITIONS_NAME_NONE     ""
 #define VBOX_GUEST_ADDITIONS_NAME_WIN      "VBoxWindowsAdditions.exe"
@@ -51,6 +52,7 @@ DECLARE_TRANSLATION_CONTEXT(GlobalCtx);
 #define VBOX_GUEST_ADDITIONS_NAME_DARWIN   "VBoxDarwinAdditions.pkg"
 #define VBOX_GUEST_ADDITIONS_NAME_LNX_X86  "VBoxLinuxAdditions.run"
 #define VBOX_GUEST_ADDITIONS_NAME_LNX_A64  "VBoxLinuxAdditions-arm64.run"
+#define VBOX_GUEST_ADDITIONS_NAME_LNX_RV64 "VBoxLinuxAdditions-riscv64.run"
 
 /* static */
 const Global::OSType Global::sOSTypes[] =
@@ -253,6 +255,8 @@ const Global::OSType Global::sOSTypes[] =
 
 #define VBOX_LINUX_OSHINTS_ARM64  (VBOXOSHINT_RTCUTC | VBOXOSHINT_USBTABLET | VBOXOSHINT_USBHID | VBOXOSHINT_EFI | VBOXOSHINT_64BIT | VBOXOSHINT_USB3)
 
+#define VBOX_LINUX_OSHINTS_RISCV64 (VBOXOSHINT_RTCUTC | VBOXOSHINT_USBTABLET | VBOXOSHINT_USBHID | VBOXOSHINT_EFI | VBOXOSHINT_64BIT | VBOXOSHINT_USB3)
+
 #define VBOX_LINUX_SUBTYPE_TEMPLATE_X86(a_szSubtype, a_Id, a_Description, a_OStype, a_OSHint, a_Memory, a_Vram, a_Diskspace, \
                                         a_NetworkAdapter, a_HDStorageController, a_HDStorageBusType) \
     { "Linux",   "Linux", a_szSubtype, GUEST_OS_ID_STR_X86(#a_Id), a_Description, VBOX_GUEST_ADDITIONS_NAME_LNX_X86, VBOX_OSTYPE_X86(a_OStype), a_OSHint, \
@@ -277,6 +281,18 @@ const Global::OSType Global::sOSTypes[] =
       1, a_Memory, a_Vram, a_Diskspace * _1G64, GraphicsControllerType_VMSVGA, a_NetworkAdapter, 0, StorageControllerType_VirtioSCSI, StorageBus_VirtioSCSI, \
       a_HDStorageController, a_HDStorageBusType, ChipsetType_ARMv8Virtual, IommuType_None, AudioControllerType_HDA, AudioCodecType_STAC9221 }
 
+#define VBOX_LINUX_SUBTYPE_TEMPLATE_RV64_QEMURAMFB(a_szSubtype, a_Id, a_Description, a_OStype, a_OSHint, a_Memory, a_Vram, a_Diskspace, \
+                                                   a_NetworkAdapter, a_HDStorageController, a_HDStorageBusType) \
+    { "Linux",   "Linux", a_szSubtype, GUEST_OS_ID_STR_RV64(#a_Id), a_Description, VBOX_GUEST_ADDITIONS_NAME_LNX_A64, VBOX_OSTYPE_RISCV64(a_OStype), a_OSHint, \
+      1, a_Memory, a_Vram, a_Diskspace * _1G64, GraphicsControllerType_QemuRamFB, a_NetworkAdapter, 0, StorageControllerType_VirtioSCSI, StorageBus_VirtioSCSI, \
+      a_HDStorageController, a_HDStorageBusType, ChipsetType_ARMv8Virtual, IommuType_None, AudioControllerType_HDA, AudioCodecType_STAC9221  }
+
+#define VBOX_LINUX_SUBTYPE_TEMPLATE_RV64(a_szSubtype, a_Id, a_Description, a_OStype, a_OSHint, a_Memory, a_Vram, a_Diskspace, \
+                                         a_NetworkAdapter, a_HDStorageController, a_HDStorageBusType) \
+    { "Linux",   "Linux", a_szSubtype, GUEST_OS_ID_STR_RV64(#a_Id), a_Description,  VBOX_GUEST_ADDITIONS_NAME_LNX_RV64, VBOX_OSTYPE_RISCV64(a_OStype), a_OSHint, \
+      1, a_Memory, a_Vram, a_Diskspace * _1G64, GraphicsControllerType_VMSVGA, a_NetworkAdapter, 0, StorageControllerType_VirtioSCSI, StorageBus_VirtioSCSI, \
+      a_HDStorageController, a_HDStorageBusType, ChipsetType_ARMv8Virtual, IommuType_None, AudioControllerType_HDA, AudioCodecType_STAC9221 }
+
 /* Linux x86 32-bit sub-type template defaulting to 1 CPU with USB-tablet-mouse/VMSVGA/Intel-Pro1000/PIIX4+IDE DVD/AHCI+SATA disk/AC97 */
 #define VBOX_LINUX_SUBTYPE_A_X86(a_szSubtype, a_Id, a_Description, a_Memory, a_Vram, a_Diskspace) \
     VBOX_LINUX_SUBTYPE_TEMPLATE_X86(a_szSubtype, a_Id, a_Description, a_Id, VBOX_LINUX_OSHINTS_A_X86, a_Memory, a_Vram, a_Diskspace, \
@@ -291,6 +307,10 @@ const Global::OSType Global::sOSTypes[] =
     VBOX_LINUX_SUBTYPE_TEMPLATE_A64(a_szSubtype, a_Id, a_Description, a_Id, VBOX_LINUX_OSHINTS_ARM64, a_Memory, a_Vram, a_Diskspace, \
                                     NetworkAdapterType_I82540EM, StorageControllerType_VirtioSCSI, StorageBus_VirtioSCSI)
 
+#define VBOX_LINUX_SUBTYPE_A_RV64(a_szSubtype, a_Id, a_Description, a_Memory, a_Vram, a_Diskspace) \
+    VBOX_LINUX_SUBTYPE_TEMPLATE_RV64(a_szSubtype, a_Id, a_Description, a_Id, VBOX_LINUX_OSHINTS_RISCV64, a_Memory, a_Vram, a_Diskspace, \
+                                     NetworkAdapterType_I82540EM, StorageControllerType_VirtioSCSI, StorageBus_VirtioSCSI)
+
 #define VBOX_LINUX_SUBTYPE_A_WITH_OSTYPE_X86(a_szSubtype, a_Id, a_Description, a_OStype, a_Memory, a_Vram, a_Diskspace) \
     VBOX_LINUX_SUBTYPE_TEMPLATE_X86(a_szSubtype, a_Id, a_Description, a_OStype, VBOX_LINUX_OSHINTS_A_X86, a_Memory, a_Vram, a_Diskspace, \
                                     NetworkAdapterType_I82540EM, StorageControllerType_IntelAhci, StorageBus_SATA)
@@ -302,6 +322,10 @@ const Global::OSType Global::sOSTypes[] =
 #define VBOX_LINUX_SUBTYPE_A_WITH_OSTYPE_A64(a_szSubtype, a_Id, a_Description, a_OStype, a_Memory, a_Vram, a_Diskspace) \
     VBOX_LINUX_SUBTYPE_TEMPLATE_A64(a_szSubtype, a_Id, a_Description, a_OStype, VBOX_LINUX_OSHINTS_ARM64, a_Memory, a_Vram, a_Diskspace, \
                                     NetworkAdapterType_I82540EM, StorageControllerType_VirtioSCSI, StorageBus_VirtioSCSI)
+
+#define VBOX_LINUX_SUBTYPE_A_WITH_OSTYPE_RV64(a_szSubtype, a_Id, a_Description, a_OStype, a_Memory, a_Vram, a_Diskspace) \
+    VBOX_LINUX_SUBTYPE_TEMPLATE_RV64(a_szSubtype, a_Id, a_Description, a_OStype, VBOX_LINUX_OSHINTS_RISCV64, a_Memory, a_Vram, a_Diskspace, \
+                                     NetworkAdapterType_I82540EM, StorageControllerType_VirtioSCSI, StorageBus_VirtioSCSI)
 
 /* Linux x86 32-bit sub-type template defaulting to 1 CPU with PS/2-mouse/PAE-NX/VMSVGA/Intel-Pro1000/PIIX4+IDE DVD/AHCI+SATA disk/AC97 */
 #define VBOX_LINUX_SUBTYPE_B_X86(a_szSubtype, a_Id, a_Description, a_Memory, a_Vram, a_Diskspace) \
@@ -316,6 +340,10 @@ const Global::OSType Global::sOSTypes[] =
 #define VBOX_LINUX_SUBTYPE_B_A64(a_szSubtype, a_Id, a_Description, a_Memory, a_Vram, a_Diskspace) \
     VBOX_LINUX_SUBTYPE_TEMPLATE_A64_QEMURAMFB(a_szSubtype, a_Id, a_Description, a_Id, VBOX_LINUX_OSHINTS_ARM64, a_Memory, a_Vram, a_Diskspace, \
                                               NetworkAdapterType_I82540EM, StorageControllerType_VirtioSCSI, StorageBus_VirtioSCSI)
+
+#define VBOX_LINUX_SUBTYPE_B_RV64(a_szSubtype, a_Id, a_Description, a_Memory, a_Vram, a_Diskspace) \
+    VBOX_LINUX_SUBTYPE_TEMPLATE_RV64_QEMURAMFB(a_szSubtype, a_Id, a_Description, a_Id, VBOX_LINUX_OSHINTS_RISCV64, a_Memory, a_Vram, a_Diskspace, \
+                                               NetworkAdapterType_I82540EM, StorageControllerType_VirtioSCSI, StorageBus_VirtioSCSI)
 
 /* Linux 32-bit sub-type template defaulting to 1 CPU with PS/2-mouse/VMSVGA/Intel-Pro1000/PIIX4+IDE DVD/AHCI+SATA disk/AC97 */
 #define VBOX_LINUX_SUBTYPE_C_X86(a_szSubtype, a_Id, a_Description, a_Memory, a_Vram, a_Diskspace) \
@@ -346,6 +374,7 @@ const Global::OSType Global::sOSTypes[] =
     VBOX_LINUX_SUBTYPE_A_X86("ArchLinux",    ArchLinux,          "Arch Linux (32-bit)",             1024, 16, 8),
     VBOX_LINUX_SUBTYPE_A_X64("ArchLinux",    ArchLinux,          "Arch Linux (64-bit)",             1024, 16, 8),
     VBOX_LINUX_SUBTYPE_A_A64("ArchLinux",    ArchLinux,          "Arch Linux (ARM 64-bit)",         1024, 128, 8),
+    VBOX_LINUX_SUBTYPE_A_RV64("ArchLinux",   ArchLinux,          "Arch Linux (RISC-V 64-bit)",      1024, 128, 8),
 
     VBOX_LINUX_SUBTYPE_A_X86("Debian",       Debian,             "Debian (32-bit)",                 2048, 16, 20),
     VBOX_LINUX_SUBTYPE_A_X64("Debian",       Debian,             "Debian (64-bit)",                 2048, 16, 20),
@@ -375,11 +404,13 @@ const Global::OSType Global::sOSTypes[] =
     VBOX_LINUX_SUBTYPE_A_A64("Debian",       Debian12,           "Debian 12 Bookworm (ARM 64-bit)", 2048, 16, 20),
     VBOX_LINUX_SUBTYPE_A_X64("Debian",       Debian13,           "Debian 13 Trixie (64-bit)",       2048, 16, 20),  // 64-bit only
     VBOX_LINUX_SUBTYPE_A_A64("Debian",       Debian13,           "Debian 13 Trixie (ARM 64-bit)",   2048, 16, 20),  // 64-bit only
+    VBOX_LINUX_SUBTYPE_A_RV64("Debian",      Debian13,           "Debian 13 Trixie (RISC-V 64-bit)", 2048, 16, 20),  // 64-bit only
 
     /** @todo rename VBOXOSTYPE entries to Fedora to avoid this? */
     VBOX_LINUX_SUBTYPE_A_WITH_OSTYPE_X86("Fedora", Fedora,       "Fedora (32-bit)", FedoraCore,     2048, 16, 15),
     VBOX_LINUX_SUBTYPE_A_WITH_OSTYPE_X64("Fedora", Fedora,       "Fedora (64-bit)", FedoraCore,     2048, 16, 15),
     VBOX_LINUX_SUBTYPE_A_WITH_OSTYPE_A64("Fedora", Fedora,       "Fedora (ARM 64-bit)", FedoraCore, 2048, 16, 15),
+    VBOX_LINUX_SUBTYPE_A_WITH_OSTYPE_RV64("Fedora", Fedora,      "Fedora (RISC-V 64-bit)", FedoraCore, 2048, 16, 15),
 
     VBOX_LINUX_SUBTYPE_A_X86("Gentoo",       Gentoo,             "Gentoo (32-bit)",                 1024, 16, 8),
     VBOX_LINUX_SUBTYPE_A_X64("Gentoo",       Gentoo,             "Gentoo (64-bit)",                 1024, 16, 8),
@@ -503,6 +534,7 @@ const Global::OSType Global::sOSTypes[] =
     VBOX_LINUX_SUBTYPE_A_X86("Other Linux", Linux,               "Other Linux (32-bit)",             256, 16, 8),
     VBOX_LINUX_SUBTYPE_B_X64("Other Linux", Linux,               "Other Linux (64-bit)",             512, 16, 8),
     VBOX_LINUX_SUBTYPE_B_A64("Other Linux", Linux,               "Other Linux (ARM 64-bit)",        2048, 16, 20),
+    VBOX_LINUX_SUBTYPE_B_RV64("Other Linux", Linux,              "Other Linux (RISC-V 64-bit)",     2048, 16, 20),
 
     { "Solaris", "Solaris",           "",        GUEST_OS_ID_STR_X86("Solaris"),        "Oracle Solaris 10 5/09 and earlier (32-bit)", VBOX_GUEST_ADDITIONS_NAME_SOLARIS,
       VBOXOSTYPE_Solaris,         VBOXOSHINT_NONE,
@@ -942,6 +974,7 @@ Global::stringifyPlatformArchitecture(PlatformArchitecture_T aEnmArchitecture)
     {
         case PlatformArchitecture_x86: return "x86";
         case PlatformArchitecture_ARM: return "ARM";
+        case PlatformArchitecture_RISCV: return "RISC-V";
         default:
             break;
     }

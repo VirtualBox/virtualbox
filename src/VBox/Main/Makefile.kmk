@@ -564,6 +564,7 @@ if !defined(VBOX_ONLY_SDK) && !defined(VBOX_ONLY_EXTPACKS) # Note this goes on f
  	$(if $(VBOX_WITH_FULL_VM_ENCRYPTION),VBOX_WITH_FULL_VM_ENCRYPTION,) \
  	$(if-expr defined(VBOX_WITH_SDS),VBOX_WITH_SDS,) \
  	$(if $(VBOX_WITH_VIRT_ARMV8),VBOX_WITH_VIRT_ARMV8,) \
+ 	$(if $(VBOX_WITH_VIRT_RISCV),VBOX_WITH_VIRT_RISCV,) \
  	$(if $(VBOX_WITH_NATIVE_NEM),VBOX_WITH_NATIVE_NEM,) \
  	$(if $(VBOX_WITH_IEM_NATIVE_RECOMPILER),VBOX_WITH_IEM_NATIVE_RECOMPILER,) \
  	$(if $(VBOX_WITH_DRIVERLESS_FORCED),VBOX_WITH_DRIVERLESS_FORCED,)
@@ -1085,7 +1086,8 @@ if !defined(VBOX_ONLY_SDK) && !defined(VBOX_ONLY_EXTPACKS) # Note this goes on f
  	$(if $(VBOX_WITH_IOMMU_INTEL),VBOX_WITH_IOMMU_INTEL,) \
  	$(if $(VBOX_WITH_TPM),VBOX_WITH_TPM,) \
  	$(if $(VBOX_WITH_FULL_VM_ENCRYPTION),VBOX_WITH_FULL_VM_ENCRYPTION,) \
- 	$(if $(VBOX_WITH_VIRT_ARMV8),VBOX_WITH_VIRT_ARMV8,)
+ 	$(if $(VBOX_WITH_VIRT_ARMV8),VBOX_WITH_VIRT_ARMV8,) \
+ 	$(if $(VBOX_WITH_VIRT_RISCV),VBOX_WITH_VIRT_RISCV,)
  ifdef VBOX_WITH_NETSHAPER
   VBoxC_DEFS += VBOX_WITH_NETSHAPER
  endif
@@ -1199,6 +1201,7 @@ if !defined(VBOX_ONLY_SDK) && !defined(VBOX_ONLY_EXTPACKS) # Note this goes on f
  	src-client/ConsoleImplConfigCommon.cpp \
  	src-client/ConsoleImplConfigX86.cpp \
  	$(if $(VBOX_WITH_VIRT_ARMV8),src-client/ConsoleImplConfigArmV8.cpp,) \
+ 	$(if $(VBOX_WITH_VIRT_RISCV),src-client/ConsoleImplConfigRiscV.cpp,) \
  	src-client/ConsoleImplTeleporter.cpp \
  	src-client/ConsoleVRDPServer.cpp \
  	src-client/DisplayImpl.cpp \

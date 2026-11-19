@@ -637,7 +637,8 @@ HRESULT VirtualBox::init()
         static const PlatformArchitecture_T s_aPlatformArchitectures[] =
         {
             PlatformArchitecture_x86,
-            PlatformArchitecture_ARM
+            PlatformArchitecture_ARM,
+            PlatformArchitecture_RISCV
         };
 
         for (size_t i = 0; i < RT_ELEMENTS(s_aPlatformArchitectures); i++)
@@ -1296,7 +1297,8 @@ HRESULT VirtualBox::getPlatformProperties(PlatformArchitecture_T platformArchite
                                           ComPtr<IPlatformProperties> &aPlatformProperties)
 {
     if (   platformArchitecture != PlatformArchitecture_x86
-        && platformArchitecture != PlatformArchitecture_ARM)
+        && platformArchitecture != PlatformArchitecture_ARM
+        && platformArchitecture != PlatformArchitecture_RISCV)
         return E_INVALIDARG;
 
     const ComObjPtr<PlatformProperties> &platformProperties = i_getPlatformProperties(platformArchitecture);
@@ -1958,6 +1960,17 @@ HRESULT VirtualBox::checkFirmwarePresent(PlatformArchitecture_T aPlatformArchite
 #endif
     };
 
+    static const VBOXFWDESC s_aFwDescRiscV[] =
+    {
+#ifdef VBOX_WITH_EFI_IN_DD2
+        {   FirmwareType_EFI32,   true,  "VBoxEFI-riscv32.fd", NULL },
+        {   FirmwareType_EFI64,   true,  "VBoxEFI-riscv64.fd", NULL },
+ #else                                                        /* Note! These links does not work! */
+        {   FirmwareType_EFI32,   false, "VBoxEFI-riscv32.fd", "http://virtualbox.org/firmware/VBoxEFI-riscv32.fd" },
+        {   FirmwareType_EFI64,   false, "VBoxEFI-riscv64.fd", "http://virtualbox.org/firmware/VBoxEFI-riscv64.fd" },
+#endif
+    };
+
     PVBOXFWDESC pFwDesc = NULL;
     uint32_t cFwDesc = 0;
     if (aPlatformArchitecture == PlatformArchitecture_x86)
@@ -1969,6 +1982,11 @@ HRESULT VirtualBox::checkFirmwarePresent(PlatformArchitecture_T aPlatformArchite
     {
         pFwDesc = &s_aFwDescArm[0];
         cFwDesc = RT_ELEMENTS(s_aFwDescArm);
+    }
+    else if (aPlatformArchitecture == PlatformArchitecture_RISCV)
+    {
+        pFwDesc = &s_aFwDescRiscV[0];
+        cFwDesc = RT_ELEMENTS(s_aFwDescRiscV);
     }
     else
         return E_INVALIDARG;
@@ -2268,7 +2286,7 @@ HRESULT VirtualBox::createMachine(const com::Utf8Str &aSettingsFile,
     LogFlowThisFunc(("aSettingsFile=\"%s\", aName=\"%s\", aArchitecture=%#x, aOsTypeId =\"%s\", aCreateFlags=\"%s\"\n",
                      aSettingsFile.c_str(), aName.c_str(), aArchitecture, aOsTypeId.c_str(), aFlags.c_str()));
 
-#if (defined(RT_ARCH_X86) || defined(RT_ARCH_AMD64)) && !defined(VBOX_WITH_VIRT_ARMV8)
+#if 0 /*(defined(RT_ARCH_X86) || defined(RT_ARCH_AMD64)) && !defined(VBOX_WITH_VIRT_ARMV8)*/
     if (aArchitecture != PlatformArchitecture_x86)/* x86 hosts only allows creating x86 VMs for now. */
         return setError(VBOX_E_PLATFORM_ARCH_NOT_SUPPORTED, tr("'Creating VMs for platform architecture %s not supported on %s"),
                         Global::stringifyPlatformArchitecture(aArchitecture),
